@@ -1,0 +1,486 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Force full width for all pages */
+html, body {
+  width: 100% !important;
+  max-width: none !important;
+  overflow-x: hidden;
+}
+
+/* Add padding for fixed navbar */
+body {
+  padding-top: 4rem; /* 64px - same as navbar height */
+}
+
+#__next {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+/* About page specific styles */
+.about-page {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-x: hidden;
+}
+
+/* Subnet Console Custom Styles */
+:root {
+  /* Light theme colors */
+  --subnet-primary: #34CC99;
+  --subnet-primary-dark: #006261;
+  --subnet-primary-light: #5eead4;
+  --subnet-secondary: #006261;
+  --subnet-accent: #2dd4bf;
+  
+  /* Background colors */
+  --subnet-bg-primary: #ffffff;
+  --subnet-bg-secondary: #f8fafc;
+  --subnet-bg-tertiary: #f1f5f9;
+  
+  /* Text colors - Enhanced contrast */
+  --subnet-text-primary: #0f172a;
+  --subnet-text-secondary: #334155;
+  --subnet-text-muted: #64748b;
+  --subnet-text-light: #ffffff;
+  
+  /* Border colors */
+  --subnet-border: #e2e8f0;
+  --subnet-border-light: #f1f5f9;
+}
+
+.dark {
+  /* Dark theme colors */
+  --subnet-primary: #34CC99;
+  --subnet-primary-dark: #006261;
+  --subnet-primary-light: #5eead4;
+  --subnet-secondary: #006261;
+  --subnet-accent: #2dd4bf;
+  
+  /* Background colors */
+  --subnet-bg-primary: #0f172a;
+  --subnet-bg-secondary: #1e293b;
+  --subnet-bg-tertiary: #334155;
+  
+  /* Text colors - Enhanced contrast for dark mode */
+  --subnet-text-primary: #f8fafc;
+  --subnet-text-secondary: #e2e8f0;
+  --subnet-text-muted: #94a3b8;
+  --subnet-text-light: #ffffff;
+  
+  /* Border colors */
+  --subnet-border: #334155;
+  --subnet-border-light: #475569;
+}
+
+/* Grid pattern for hero section */
+.bg-grid-pattern {
+  background-image: 
+    linear-gradient(rgba(52, 204, 153, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(52, 204, 153, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Glassmorphism effects */
+.glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.glass-dark {
+  background: rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Floating animation */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Gradient animations */
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animated-gradient {
+  background: linear-gradient(-45deg, #34CC99, #006261, #2dd4bf, #0d9488);
+  background-size: 400% 400%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+/* Pulse animation */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(52, 204, 153, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(52, 204, 153, 0.6); }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Custom utility classes */
+.subnet-gradient {
+  background: linear-gradient(135deg, var(--subnet-primary) 0%, var(--subnet-primary-dark) 100%);
+}
+
+.subnet-gradient-text {
+  background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 50%, #ffffff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  font-weight: 700;
+}
+
+/* Enhanced card styles */
+.subnet-card {
+  background: var(--subnet-bg-primary);
+  border: 1px solid var(--subnet-border);
+  border-radius: 16px;
+  transition: all 0.3s ease-in-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.subnet-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--subnet-primary), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.subnet-card:hover {
+  border-color: var(--subnet-primary);
+  box-shadow: 0 8px 32px rgba(52, 204, 153, 0.15);
+  transform: translateY(-2px);
+}
+
+.subnet-card:hover::before {
+  opacity: 1;
+}
+
+/* Button enhancements */
+.subnet-button-primary {
+  background: var(--subnet-primary);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-weight: 600;
+  transition: all 0.3s ease-in-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.subnet-button-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.subnet-button-primary:hover::before {
+  left: 100%;
+}
+
+.subnet-button-primary:hover {
+  background: var(--subnet-primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(52, 204, 153, 0.4);
+}
+
+.subnet-button-secondary {
+  background: transparent;
+  color: var(--subnet-primary);
+  border: 2px solid var(--subnet-primary);
+  border-radius: 12px;
+  padding: 10px 22px;
+  font-weight: 600;
+  transition: all 0.3s ease-in-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.subnet-button-secondary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 100%;
+  background: var(--subnet-primary);
+  transition: width 0.3s ease;
+  z-index: -1;
+}
+
+.subnet-button-secondary:hover::before {
+  width: 100%;
+}
+
+.subnet-button-secondary:hover {
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(52, 204, 153, 0.3);
+}
+
+/* Enhanced text contrast utilities */
+.text-high-contrast {
+  color: #ffffff;
+  font-weight: 600;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.text-medium-contrast {
+  color: #f8fafc;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.text-low-contrast {
+  color: #e2e8f0;
+  font-weight: 400;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Background with text overlay */
+.bg-overlay {
+  position: relative;
+}
+
+.bg-overlay::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: inherit;
+  z-index: 1;
+}
+
+.bg-overlay > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Custom white badge for hero section */
+.badge-white {
+  background: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  color: #ffffff !important;
+  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.glass-enhanced-dark {
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* White text for gradient backgrounds */
+.text-white-on-gradient {
+  color: #ffffff !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  font-weight: 600;
+}
+
+.text-white-on-gradient-light {
+  color: #f8fafc !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  font-weight: 500;
+}
+
+/* Force white text for hero section - stronger override */
+.hero-text-white {
+  color: #ffffff !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5) !important;
+}
+
+.hero-text-white-light {
+  color: #f8fafc !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Navbar Height and Sticky Positioning */
+.navbar-height {
+  height: 4rem !important; /* 64px */
+  min-height: 4rem !important;
+}
+
+/* Enhanced sticky navbar */
+.sticky-navbar {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  transition: all 0.3s ease;
+}
+
+/* Navbar scroll effect - Light theme */
+.navbar-scrolled {
+  background: rgba(248, 250, 252, 0.95) !important;
+  backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid rgba(52, 204, 153, 0.3) !important;
+  box-shadow: 0 4px 20px rgba(52, 204, 153, 0.15) !important;
+}
+
+/* Dark mode navbar scroll effect */
+.dark .navbar-scrolled {
+  background: rgba(15, 23, 42, 0.95) !important;
+  backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid rgba(52, 204, 153, 0.4) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Alternative navbar scroll styles - uncomment to use */
+
+/* Option 1: Gradient background */
+/*
+.navbar-scrolled {
+  background: linear-gradient(135deg, rgba(52, 204, 153, 0.1) 0%, rgba(0, 98, 97, 0.1) 100%) !important;
+  backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid rgba(52, 204, 153, 0.3) !important;
+  box-shadow: 0 4px 20px rgba(52, 204, 153, 0.2) !important;
+}
+*/
+
+/* Option 2: Pure white background */
+/*
+.navbar-scrolled {
+  background: rgba(255, 255, 255, 0.98) !important;
+  backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid rgba(52, 204, 153, 0.2) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+}
+*/
+
+/* Option 3: Glass effect with primary color tint */
+/*
+.navbar-scrolled {
+  background: rgba(52, 204, 153, 0.05) !important;
+  backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid rgba(52, 204, 153, 0.3) !important;
+  box-shadow: 0 4px 20px rgba(52, 204, 153, 0.1) !important;
+}
+*/
+
+.navbar-content {
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+/* Enhanced Connect Wallet Button */
+.connect-wallet-btn {
+  background: linear-gradient(135deg, #34CC99 0%, #006261 100%) !important;
+  border: 1px solid rgba(52, 204, 153, 0.3) !important;
+  box-shadow: 0 4px 15px rgba(52, 204, 153, 0.4) !important;
+  color: white !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+}
+
+.connect-wallet-btn:hover {
+  background: linear-gradient(135deg, #006261 0%, #34CC99 100%) !important;
+  box-shadow: 0 6px 20px rgba(52, 204, 153, 0.6) !important;
+  transform: translateY(-1px) !important;
+}
+
+.connect-wallet-btn:active {
+  transform: translateY(0) !important;
+  box-shadow: 0 2px 10px rgba(52, 204, 153, 0.4) !important;
+}
+
+.connect-wallet-btn:disabled {
+  opacity: 0.7 !important;
+  cursor: not-allowed !important;
+}
+
+/* Wallet Connected Button */
+.wallet-connected {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.wallet-connected:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: var(--subnet-primary);
+  box-shadow: 0 4px 15px rgba(52, 204, 153, 0.2);
+}
+
+/* MetaMask Icon Animation */
+.metamask-icon {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { 
+    box-shadow: 0 0 5px rgba(52, 204, 153, 0.3);
+  }
+  50% { 
+    box-shadow: 0 0 15px rgba(52, 204, 153, 0.6);
+  }
+}
+
+/* Loading Spinner */
+.wallet-loading {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Stats text for hero section */
+.stats-text-white {
+  color: #ffffff !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6) !important;
+  font-weight: 700 !important;
+}
+
+.stats-text-white-muted {
+  color: #e2e8f0 !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) !important;
+  font-weight: 500 !important;
+}
+
+.hero-stats-label {
+  color: #e2e8f0 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+  font-weight: 500 !important;
+}
