@@ -1221,12 +1221,7 @@ function DeployPageContent() {
                                   {gpuReqs.models.map((model, index) => (
                                     <div key={index} className="bg-primary/5 p-2 rounded text-xs">
                                       <div className="font-medium text-primary">
-                                        {model.vendor} {model.model}
-                                      </div>
-                                      <div className="text-default-600">
-                                        Memory: <span className="font-medium">{model.memory}</span>
-                                        <span className="mx-2">•</span>
-                                        Interface: <span className="font-medium">{model.interface}</span>
+                                        {model.vendor} {model.model} {model.memory} {model.interface}
                                       </div>
                                     </div>
                                   ))}
@@ -1505,12 +1500,7 @@ function DeployPageContent() {
                                     {gpuReqs.models.map((model, index) => (
                                       <div key={index} className="bg-primary/5 p-2 rounded text-xs">
                                         <div className="font-medium text-primary">
-                                          {model.vendor} {model.model}
-                                        </div>
-                                        <div className="text-default-600">
-                                          Memory: <span className="font-medium">{model.memory}</span>
-                                          <span className="mx-2">•</span>
-                                          Interface: <span className="font-medium">{model.interface}</span>
+                                          {model.vendor} {model.model} {model.memory} {model.interface}
                                         </div>
                                       </div>
                                     ))}

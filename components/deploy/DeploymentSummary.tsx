@@ -265,10 +265,7 @@ export default function DeploymentSummary({
               {gpuRequirements.models.map((model, index) => (
                 <div key={index} className="bg-primary/5 p-2 rounded text-xs mb-1">
                   <div className="text-default-600">
-                    {model.vendor} {model.model}
-                  </div>
-                  <div className="text-default-500 text-xs">
-                    {model.memory} • {model.interface}
+                    {model.vendor} {model.model} {model.memory} {model.interface}
                   </div>
                 </div>
               ))}
