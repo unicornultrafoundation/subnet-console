@@ -30,6 +30,7 @@ import {
   LogOut,
   Copy,
   ExternalLink,
+  Server,
 } from "lucide-react";
 
 import { siteConfig } from "@/config/site";
@@ -219,6 +220,30 @@ export const Navbar = () => {
                       </span>
                       <span className="text-xs text-gray-500">
                         • View deployments
+                      </span>
+                    </div>
+                  </DropdownItem>
+
+                  <DropdownItem
+                    key="my-applications"
+                    as={NextLink}
+                    className="h-10 p-3 rounded-lg hover:bg-success/5"
+                    endContent={
+                      <ExternalLink className="text-gray-400" size={12} />
+                    }
+                    href="/my-applications"
+                    startContent={
+                      <div className="w-6 h-6 rounded-lg bg-success/10 flex items-center justify-center">
+                        <Server className="text-success" size={14} />
+                      </div>
+                    }
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-900">
+                        My Applications
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        • Manage apps
                       </span>
                     </div>
                   </DropdownItem>

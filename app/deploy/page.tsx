@@ -44,7 +44,10 @@ import DeploymentSummary from "@/components/deploy/DeploymentSummary";
 //         cpu: { units: string };
 //         memory: { size: string };
 //         storage: { size: string }[];
-//         gpu?: { model: string };
+//         gpu?: { 
+//           units: string;
+//           model: string;
+//         };
 //       };
 //     };
 //   };
@@ -55,7 +58,10 @@ import DeploymentSummary from "@/components/deploy/DeploymentSummary";
 //           cpu: { units: string };
 //           memory: { size: string };
 //           storage: { size: string }[];
-//           gpu?: { model: string };
+//           gpu?: { 
+//             units: string;
+//             model: string;
+//           };
 //         };
 //       };
 //     };
@@ -82,19 +88,50 @@ import DeploymentSummary from "@/components/deploy/DeploymentSummary";
 //   };
 // }
 
+interface GPUConfig {
+  id: string;
+  vendor: string;
+  model: string;
+  memory: string;
+  interface: string;
+}
+
+interface Volume {
+  id: string;
+  name: string;
+  size: string;
+  sizeUnit: string;
+  type: string;
+  mount: string;
+  readOnly: boolean;
+}
+
+interface PortExposure {
+  id: string;
+  port: number;
+  as: number;
+  protocol: string;
+  acceptDomains: string[];
+  toServices: string[];
+}
+
 interface Service {
   name: string;
   image: string;
   command: string[];
   args: string[];
   env: { key: string; value: string }[];
-  volumes: { mount: string; size: string }[];
-  expose: { port: number; as: number; to: { global: boolean }[] }[];
+  volumes: Volume[];
+  expose: PortExposure[];
+  replicas?: number;
   resources: {
     cpu: { units: string };
     memory: { size: string };
     storage: { size: string }[];
-    gpu?: { model: string };
+    gpu?: { 
+      units: string;
+      configs: GPUConfig[];
+    };
   };
 }
 
@@ -121,12 +158,14 @@ function DeployPageContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deploymentMode, setDeploymentMode] = useState<
     "template" | "application"
-  >("template");
+  >("application");
   const [selectedApp, setSelectedApp] = useState<string>("");
+  const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [currentTab, setCurrentTab] = useState(0);
   const [selectedBid, setSelectedBid] = useState<string>("");
   const [bids, setBids] = useState<any[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<string>("any");
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [hasChosenMethod, setHasChosenMethod] = useState(false);
@@ -278,7 +317,38 @@ function DeployPageContent() {
     },
   ];
 
-  const applications: Application[] = [
+  const [applications, setApplications] = useState<any[]>([]);
+
+  // Load applications on component mount
+  useEffect(() => {
+    const savedApps = JSON.parse(localStorage.getItem('applications') || '[]');
+    setApplications(savedApps);
+    
+    // Check URL parameters for app selection
+    const urlParams = new URLSearchParams(window.location.search);
+    const appId = urlParams.get('app');
+    const mode = urlParams.get('mode');
+    
+    if (appId && mode === 'application') {
+      const app = savedApps.find((a: any) => a.id === appId);
+      if (app) {
+        setSelectedApplication(app);
+        setSelectedApp(appId);
+        setDeploymentMode('application');
+        setServices(app.services || []);
+      }
+    }
+  }, []);
+
+  // Update services when application is selected
+  useEffect(() => {
+    if (selectedApplication && selectedApplication.services) {
+      setServices(selectedApplication.services);
+    }
+  }, [selectedApplication]);
+
+  // Mock applications for demo (will be replaced by loaded apps)
+  const mockApplications: Application[] = [
     {
       id: "web-app-1",
       name: "React Web App",
@@ -316,9 +386,147 @@ function DeployPageContent() {
     { id: "deploy", title: "Deploy", icon: Play },
   ];
 
+  // Clear validation errors when user starts typing
+  const handleDeploymentNameChange = (value: string) => {
+    setDeploymentName(value);
+    if (validationErrors.length > 0) {
+      setValidationErrors([]);
+    }
+  };
+
+  const handleDescriptionChange = (value: string) => {
+    setDescription(value);
+    if (validationErrors.length > 0) {
+      setValidationErrors([]);
+    }
+  };
+
+  const handleMaxPriceChange = (value: string) => {
+    setMaxPrice(value);
+    if (validationErrors.length > 0) {
+      setValidationErrors([]);
+    }
+  };
+
+  // Validation function for Basic Info tab
+  const validateBasicInfo = () => {
+    const errors = [];
+    
+    if (!deploymentName.trim()) {
+      errors.push("Deployment name is required");
+    }
+    
+    if (!maxPrice.trim()) {
+      errors.push("Max price is required");
+    } else {
+      const price = parseFloat(maxPrice);
+      if (isNaN(price) || price <= 0) {
+        errors.push("Max price must be a valid positive number");
+      }
+    }
+    
+    setValidationErrors(errors);
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  };
+
+  // Validation function for Configuration tab
+  const validateConfiguration = () => {
+    const errors = [];
+    
+    // Check if at least one service exists
+    if (services.length === 0) {
+      errors.push("At least one service is required");
+      setValidationErrors(errors);
+      return {
+        isValid: false,
+        errors
+      };
+    }
+    
+    // Validate each service
+    services.forEach((service, index) => {
+      const serviceNum = index + 1;
+      
+      // Service name
+      if (!service.name.trim()) {
+        errors.push(`Service ${serviceNum}: Name is required`);
+      }
+      
+      // Docker image
+      if (!service.image.trim()) {
+        errors.push(`Service ${serviceNum}: Docker image is required`);
+      }
+      
+      // CPU resources
+      if (!service.resources.cpu.units || parseFloat(service.resources.cpu.units) <= 0) {
+        errors.push(`Service ${serviceNum}: CPU units must be greater than 0`);
+      }
+      
+      // Memory resources
+      if (!service.resources.memory.size || parseFloat(service.resources.memory.size.replace(/[^\d.]/g, "")) <= 0) {
+        errors.push(`Service ${serviceNum}: Memory size must be greater than 0`);
+      }
+      
+      // Volumes validation
+      if (service.volumes && service.volumes.length > 0) {
+        service.volumes.forEach((volume, volIndex) => {
+          if (!volume.name.trim()) {
+            errors.push(`Service ${serviceNum}, Volume ${volIndex + 1}: Name is required`);
+          }
+          if (!volume.mount.trim()) {
+            errors.push(`Service ${serviceNum}, Volume ${volIndex + 1}: Mount path is required`);
+          }
+          if (!volume.size || parseFloat(volume.size) <= 0) {
+            errors.push(`Service ${serviceNum}, Volume ${volIndex + 1}: Size must be greater than 0`);
+          }
+        });
+      }
+      
+      // Ports validation
+      if (service.expose && service.expose.length > 0) {
+        service.expose.forEach((port, portIndex) => {
+          if (!port.port || port.port <= 0) {
+            errors.push(`Service ${serviceNum}, Port ${portIndex + 1}: Port number must be greater than 0`);
+          }
+          if (!port.as || port.as <= 0) {
+            errors.push(`Service ${serviceNum}, Port ${portIndex + 1}: External port must be greater than 0`);
+          }
+        });
+      }
+    });
+    
+    setValidationErrors(errors);
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  };
+
   // Handlers
   const handleNextTab = () => {
     console.log("Next tab clicked, current tab:", currentTab);
+    
+    // Validate Basic Info tab before proceeding
+    if (currentTab === 0) {
+      const validation = validateBasicInfo();
+      if (!validation.isValid) {
+        return; // Don't proceed, errors are already displayed
+      }
+    }
+    
+    // Validate Configuration tab before proceeding
+    if (currentTab === 1) {
+      const validation = validateConfiguration();
+      if (!validation.isValid) {
+        return; // Don't proceed, errors are already displayed
+      }
+    }
+    
     if (currentTab < tabs.length - 1) {
       setCurrentTab(currentTab + 1);
     }
@@ -389,31 +597,10 @@ function DeployPageContent() {
   const handleApplicationSelect = (appId: string) => {
     setSelectedApp(appId);
     const app = applications.find((a) => a.id === appId);
-
+    
     if (app) {
-      setServices([
-        {
-          name: app.name.toLowerCase().replace(/\s+/g, "-"),
-          image: app.image,
-          command: [
-            "sh",
-            "-c",
-            'echo "Starting application..." && sleep infinity',
-          ],
-          args: [],
-          env: [
-            { key: "NODE_ENV", value: "production" },
-            { key: "PORT", value: "3000" },
-          ],
-          volumes: [{ mount: "/app/data", size: "1Gi" }],
-          expose: [{ port: 3000, as: 3000, to: [{ global: true }] }],
-          resources: {
-            cpu: { units: app.resources.cpu },
-            memory: { size: app.resources.memory },
-            storage: [{ size: app.resources.storage }],
-          },
-        },
-      ]);
+      setSelectedApplication(app);
+      setServices(app.services || []);
     }
   };
 
@@ -424,20 +611,45 @@ function DeployPageContent() {
       command: ["nginx", "-g", "daemon off;"],
       args: [],
       env: [],
-      volumes: [],
-      expose: [{ port: 80, as: 80, to: [{ global: true }] }],
+      volumes: [{ 
+        id: `volume-${Date.now()}`,
+        name: "data-volume",
+        size: "10",
+        sizeUnit: "GB",
+        type: "ssd",
+        mount: "/data",
+        readOnly: false
+      }],
+      expose: [{ 
+        id: `port-${Date.now()}`,
+        port: 80, 
+        as: 80, 
+        protocol: "http",
+        acceptDomains: [],
+        toServices: []
+      }],
       resources: {
         cpu: { units: "1" },
         memory: { size: "1Gi" },
         storage: [{ size: "10Gi" }],
+        gpu: {
+          units: "0",
+          configs: [],
+        },
       },
     };
 
     setServices([...services, newService]);
+    if (validationErrors.length > 0) {
+      setValidationErrors([]);
+    }
   };
 
   const handleRemoveService = (serviceName: string) => {
     setServices(services.filter((s) => s.name !== serviceName));
+    if (validationErrors.length > 0) {
+      setValidationErrors([]);
+    }
   };
 
   const handleUpdateService = (
@@ -463,6 +675,30 @@ function DeployPageContent() {
               ...s,
               resources: { ...s.resources, storage: [{ size: value }] },
             };
+          } else if (field === "gpu_units") {
+            return {
+              ...s,
+              resources: { 
+                ...s.resources, 
+                gpu: { 
+                  ...s.resources.gpu, 
+                  units: value,
+                  configs: s.resources.gpu?.configs || []
+                } 
+              },
+            };
+          } else if (field === "gpu_configs") {
+            return {
+              ...s,
+              resources: { 
+                ...s.resources, 
+                gpu: { 
+                  ...s.resources.gpu, 
+                  units: s.resources.gpu?.units || "0",
+                  configs: value
+                } 
+              },
+            };
           } else if (field === "env") {
             return { ...s, env: value };
           } else if (field === "volumes") {
@@ -477,6 +713,10 @@ function DeployPageContent() {
         return s;
       }),
     );
+    
+    if (validationErrors.length > 0) {
+      setValidationErrors([]);
+    }
   };
 
   const toggleFavouriteApp = (appId: string) => {
@@ -595,22 +835,24 @@ function DeployPageContent() {
     }
   };
 
-  // Calculate totals
+  // Calculate totals (with replicas)
   const totalCpu = services.reduce(
-    (sum, service) => sum + parseFloat(service.resources.cpu.units),
+    (sum, service) => sum + (parseFloat(service.resources.cpu.units) * (service.replicas || 1)),
     0,
   );
   const totalMemory = services.reduce((sum, service) => {
     const memory = service.resources.memory.size;
     const value = parseFloat(memory.replace(/[^\d.]/g, ""));
+    const replicas = service.replicas || 1;
 
-    return sum + value;
+    return sum + (value * replicas);
   }, 0);
   const totalStorage = services.reduce((sum, service) => {
     const storage = service.resources.storage[0]?.size || "0Gi";
     const value = parseFloat(storage.replace(/[^\d.]/g, ""));
+    const replicas = service.replicas || 1;
 
-    return sum + value;
+    return sum + (value * replicas);
   }, 0);
   const totalGpu = services.reduce(
     (sum, service) => sum + (service.resources.gpu ? 1 : 0),
@@ -619,7 +861,8 @@ function DeployPageContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-background/50">
-      <div className="flex gap-8 max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="flex gap-8 items-start">
         {/* Main Content */}
         <div className="flex-1">
           {/* Header */}
@@ -656,33 +899,119 @@ function DeployPageContent() {
                 <ProgressIndicator currentTab={currentTab} tabs={tabs} />
 
                 {currentTab === 0 && (
-                  <BasicInfo
-                    deploymentName={deploymentName}
-                    description={description}
-                    maxPrice={maxPrice}
-                    regions={regions}
-                    selectedRegion={selectedRegion}
-                    onDeploymentNameChange={setDeploymentName}
-                    onDescriptionChange={setDescription}
-                    onMaxPriceChange={setMaxPrice}
-                    onRegionChange={setSelectedRegion}
-                  />
+                  <div className="space-y-4">
+                    {/* Validation Errors */}
+                    {validationErrors.length > 0 && (
+                      <Card className="border-danger/20 bg-danger/5">
+                        <CardBody className="p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="w-5 h-5 rounded-full bg-danger/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <span className="text-danger text-xs font-bold">!</span>
+                            </div>
+                            <div className="space-y-1">
+                              <h4 className="font-semibold text-danger text-sm">Please fix the following errors:</h4>
+                              <ul className="text-danger text-sm space-y-1">
+                                {validationErrors.map((error, index) => (
+                                  <li key={index} className="flex items-center gap-2">
+                                    <span className="w-1 h-1 bg-danger rounded-full"></span>
+                                    {error}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        </CardBody>
+                      </Card>
+                    )}
+                    
+                    <BasicInfo
+                      deploymentName={deploymentName}
+                      description={description}
+                      maxPrice={maxPrice}
+                      regions={regions}
+                      selectedRegion={selectedRegion}
+                      onDeploymentNameChange={handleDeploymentNameChange}
+                      onDescriptionChange={handleDescriptionChange}
+                      onMaxPriceChange={handleMaxPriceChange}
+                      onRegionChange={setSelectedRegion}
+                    />
+                  </div>
                 )}
 
                 {currentTab === 1 && (
-                  <Configuration
-                    applications={applications}
-                    deploymentMode={deploymentMode}
-                    favouriteApps={favouriteApps}
-                    selectedApp={selectedApp}
-                    selectedTemplate={selectedTemplate}
-                    services={services}
-                    onAddService={handleAddService}
-                    onApplicationSelect={handleApplicationSelect}
-                    onRemoveService={handleRemoveService}
-                    onToggleFavouriteApp={toggleFavouriteApp}
-                    onUpdateService={handleUpdateService}
-                  />
+                  <div className="space-y-4">
+                    {/* Application Builder Link */}
+                    <Card className="border-primary/20 bg-primary/5">
+                      <CardBody className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                              <Code className="text-primary" size={20} />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-primary">Build Your Own Application</h4>
+                              <p className="text-sm text-default-600">
+                                Create custom applications with our Application Builder
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              color="primary"
+                              variant="bordered"
+                              onClick={() => router.push('/applications/builder')}
+                            >
+                              Open Builder
+                            </Button>
+                            <Button
+                              variant="light"
+                              onClick={() => router.push('/my-applications')}
+                            >
+                              My Applications
+                            </Button>
+                          </div>
+                        </div>
+                      </CardBody>
+                    </Card>
+
+                    {/* Validation Errors */}
+                    {validationErrors.length > 0 && (
+                      <Card className="border-danger/20 bg-danger/5">
+                        <CardBody className="p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="w-5 h-5 rounded-full bg-danger/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <span className="text-danger text-xs font-bold">!</span>
+                            </div>
+                            <div className="space-y-1">
+                              <h4 className="font-semibold text-danger text-sm">Please fix the following errors:</h4>
+                              <ul className="text-danger text-sm space-y-1 max-h-40 overflow-y-auto">
+                                {validationErrors.map((error, index) => (
+                                  <li key={index} className="flex items-center gap-2">
+                                    <span className="w-1 h-1 bg-danger rounded-full"></span>
+                                    {error}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        </CardBody>
+                      </Card>
+                    )}
+                    
+                    <Configuration
+                      applications={applications}
+                      deploymentMode={deploymentMode}
+                      favouriteApps={favouriteApps}
+                      selectedApp={selectedApp}
+                      selectedTemplate={selectedTemplate}
+                      services={services}
+                      onAddService={handleAddService}
+                      onApplicationSelect={handleApplicationSelect}
+                      onRemoveService={handleRemoveService}
+                      onToggleFavouriteApp={toggleFavouriteApp}
+                      onUpdateService={handleUpdateService}
+                    />
+                  </div>
                 )}
 
                 {currentTab === 2 && (
@@ -835,6 +1164,79 @@ function DeployPageContent() {
                               </div>
                             )}
                           </div>
+                          
+                          {/* GPU Requirements */}
+                          {(() => {
+                            const gpuRequirements = new Map();
+                            services.forEach(service => {
+                              if (service.resources.gpu && service.resources.gpu.configs && service.resources.gpu.configs.length > 0) {
+                                const replicas = service.replicas || 1;
+                                const gpuUnits = parseInt(service.resources.gpu.units || "0") || 0;
+                                
+                                if (gpuUnits > 0) {
+                                  service.resources.gpu.configs.forEach(config => {
+                                    const key = `${config.vendor}-${config.model}`;
+                                    const current = gpuRequirements.get(key) || 0;
+                                    gpuRequirements.set(key, current + (gpuUnits * replicas));
+                                  });
+                                }
+                              }
+                            });
+                            
+                            let totalGpuUnits = 0;
+                            const gpuModels = new Set();
+                            
+                            services.forEach(service => {
+                              if (service.resources.gpu && service.resources.gpu.configs && service.resources.gpu.configs.length > 0) {
+                                const replicas = service.replicas || 1;
+                                const gpuUnits = parseInt(service.resources.gpu.units || "0") || 0;
+                                
+                                if (gpuUnits > 0) {
+                                  totalGpuUnits += gpuUnits * replicas;
+                                  service.resources.gpu.configs.forEach(config => {
+                                    gpuModels.add(`${config.vendor}-${config.model}-${config.memory}-${config.interface}`);
+                                  });
+                                }
+                              }
+                            });
+                            
+                            const gpuReqs = {
+                              totalUnits: totalGpuUnits,
+                              models: Array.from(gpuModels).map(modelKey => {
+                                const [vendor, model, memory, gpuInterface] = modelKey.split('-');
+                                return { vendor, model, memory, interface: gpuInterface };
+                              })
+                            };
+                            
+                            return gpuReqs.totalUnits > 0 ? (
+                              <div className="mt-4 p-4 bg-primary/5 rounded-lg border border-primary/20">
+                                <h5 className="font-semibold text-primary mb-3">GPU Requirements</h5>
+                                <div className="bg-primary/5 p-3 rounded mb-3">
+                                  <div className="flex justify-between items-center">
+                                    <span className="font-medium text-primary">Total GPU Units:</span>
+                                    <span className="font-semibold text-primary text-lg">{gpuReqs.totalUnits}</span>
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  {gpuReqs.models.map((model, index) => (
+                                    <div key={index} className="bg-primary/5 p-2 rounded text-xs">
+                                      <div className="font-medium text-primary">
+                                        {model.vendor} {model.model}
+                                      </div>
+                                      <div className="text-default-600">
+                                        Memory: <span className="font-medium">{model.memory}</span>
+                                        <span className="mx-2">•</span>
+                                        Interface: <span className="font-medium">{model.interface}</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                                <div className="mt-3 p-2 bg-primary/10 rounded text-xs text-primary-700">
+                                  <strong>Note:</strong> Provider must have one of these GPU types available.
+                                </div>
+                              </div>
+                            ) : null;
+                          })()}
                         </div>
 
                         <Divider />
@@ -866,89 +1268,135 @@ function DeployPageContent() {
                                       <h5 className="font-semibold text-lg">
                                         {service.name}
                                       </h5>
-                                      <Chip
-                                        color="primary"
-                                        size="sm"
-                                        variant="flat"
-                                      >
-                                        Service {index + 1}
-                                      </Chip>
-                                    </div>
-                                    <div className="grid md:grid-cols-2 gap-4 text-sm">
-                                      <div>
-                                        <span className="text-default-600">
-                                          Image:
-                                        </span>
-                                        <span className="font-medium ml-2">
-                                          {service.image}
-                                        </span>
-                                      </div>
-                                      <div>
-                                        <span className="text-default-600">
-                                          CPU:
-                                        </span>
-                                        <span className="font-medium ml-2">
-                                          {service.resources.cpu.units} units
-                                        </span>
-                                      </div>
-                                      <div>
-                                        <span className="text-default-600">
-                                          Memory:
-                                        </span>
-                                        <span className="font-medium ml-2">
-                                          {service.resources.memory.size}
-                                        </span>
-                                      </div>
-                                      <div>
-                                        <span className="text-default-600">
-                                          Storage:
-                                        </span>
-                                        <span className="font-medium ml-2">
-                                          {service.resources.storage[0]?.size ||
-                                            "N/A"}
-                                        </span>
+                                      <div className="flex items-center gap-2">
+                                        <Chip
+                                          color="primary"
+                                          size="sm"
+                                          variant="flat"
+                                        >
+                                          Service {index + 1}
+                                        </Chip>
+                                        <Chip
+                                          color="secondary"
+                                          size="sm"
+                                          variant="flat"
+                                        >
+                                          {service.replicas || 1} replica{(service.replicas || 1) > 1 ? 's' : ''}
+                                        </Chip>
                                       </div>
                                     </div>
-                                    {service.env.length > 0 && (
-                                      <div className="mt-3">
-                                        <span className="text-default-600 text-sm">
-                                          Environment Variables:
-                                        </span>
-                                        <div className="flex flex-wrap gap-1 mt-1">
-                                          {service.env.map((env, envIndex) => (
-                                            <Chip
-                                              key={envIndex}
-                                              color="default"
-                                              size="sm"
-                                              variant="flat"
-                                            >
-                                              {env.key}={env.value}
-                                            </Chip>
-                                          ))}
+                                    
+                                    <div className="space-y-3 text-sm">
+                                      {/* Basic Info */}
+                                      <div className="grid md:grid-cols-2 gap-4">
+                                        <div>
+                                          <span className="text-default-600">Image:</span>
+                                          <span className="font-medium ml-2">{service.image}</span>
+                                        </div>
+                                        <div>
+                                          <span className="text-default-600">Resources:</span>
+                                          <span className="font-medium ml-2">
+                                            {service.resources.cpu.units} CPU, {service.resources.memory.size}
+                                            {service.resources.gpu && parseInt(service.resources.gpu.units) > 0 && (
+                                              <>, {service.resources.gpu.units} GPU{service.resources.gpu.configs && service.resources.gpu.configs.length > 0 && ` (${service.resources.gpu.configs.map(config => config.model).join(', ')})`}</>
+                                            )}
+                                            <span className="text-xs text-default-500 ml-2">(per replica)</span>
+                                          </span>
                                         </div>
                                       </div>
-                                    )}
-                                    {service.expose.length > 0 && (
-                                      <div className="mt-3">
-                                        <span className="text-default-600 text-sm">
-                                          Ports:
-                                        </span>
-                                        <div className="flex flex-wrap gap-1 mt-1">
-                                          {service.expose.map(
-                                            (port, portIndex) => (
+                                      
+                                      {/* Command & Args */}
+                                      {service.command && service.command.length > 0 && (
+                                        <div>
+                                          <span className="text-default-600">Command:</span>
+                                          <span className="font-medium ml-2">{service.command.join(' ')}</span>
+                                        </div>
+                                      )}
+                                      
+                                      {service.args && service.args.length > 0 && (
+                                        <div>
+                                          <span className="text-default-600">Args:</span>
+                                          <span className="font-medium ml-2">{service.args.join(' ')}</span>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Registry Auth */}
+                                      {(service.registryUrl || service.registryUsername) && (
+                                        <div>
+                                          <span className="text-default-600">Registry:</span>
+                                          <span className="font-medium text-primary ml-2">
+                                            {service.registryUrl || 'Private Registry'}
+                                          </span>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Volumes */}
+                                      {service.volumes && service.volumes.length > 0 && (
+                                        <div>
+                                          <span className="text-default-600">Volumes:</span>
+                                          <div className="space-y-2 mt-1">
+                                            {service.volumes.map((volume, volIndex) => (
+                                              <div key={volIndex} className="bg-default-50 p-2 rounded text-xs">
+                                                <div className="flex justify-between">
+                                                  <span className="font-medium">{volume.name}</span>
+                                                  <span className="text-default-500">{volume.size}{volume.sizeUnit} ({volume.type})</span>
+                                                </div>
+                                                <div className="text-default-600 mt-1">
+                                                  Mount: <span className="font-medium">{volume.mount}</span>
+                                                  {volume.readOnly && <span className="text-warning ml-2">(read-only)</span>}
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Ports */}
+                                      {service.expose && service.expose.length > 0 && (
+                                        <div>
+                                          <span className="text-default-600">Ports:</span>
+                                          <div className="space-y-2 mt-1">
+                                            {service.expose.map((port, portIndex) => (
+                                              <div key={portIndex} className="bg-default-50 p-2 rounded text-xs">
+                                                <div className="flex justify-between">
+                                                  <span className="font-medium">{port.port}→{port.as}</span>
+                                                  <span className="text-default-500">({port.protocol})</span>
+                                                </div>
+                                                {port.acceptDomains && port.acceptDomains.length > 0 && (
+                                                  <div className="text-default-600 mt-1">
+                                                    Domains: <span className="font-medium">{port.acceptDomains.join(', ')}</span>
+                                                  </div>
+                                                )}
+                                                {port.toServices && port.toServices.length > 0 && (
+                                                  <div className="text-default-600 mt-1">
+                                                    To Services: <span className="font-medium">{port.toServices.join(', ')}</span>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Environment Variables */}
+                                      {service.env && service.env.length > 0 && (
+                                        <div>
+                                          <span className="text-default-600">Environment:</span>
+                                          <div className="flex flex-wrap gap-1 mt-1">
+                                            {service.env.map((env, envIndex) => (
                                               <Chip
-                                                key={portIndex}
-                                                color="secondary"
+                                                key={envIndex}
+                                                color="default"
                                                 size="sm"
                                                 variant="flat"
                                               >
-                                                {port.port}→{port.as}
+                                                {env.key}={env.value}
                                               </Chip>
-                                            ),
-                                          )}
+                                            ))}
+                                          </div>
                                         </div>
-                                      </div>
-                                    )}
+                                      )}
+                                    </div>
                                   </CardBody>
                                 </Card>
                               ))}
@@ -973,31 +1421,127 @@ function DeployPageContent() {
                         </CardHeader>
                         <CardBody className="space-y-4">
                           <div className="bg-primary/5 p-4 rounded-lg">
-                            <h3 className="font-semibold mb-2">
+                            <h3 className="font-semibold mb-3">
                               Deployment Requirements
                             </h3>
-                            <div className="grid md:grid-cols-2 gap-4 text-sm">
+                            
+                            {/* Basic Resources */}
+                            <div className="grid md:grid-cols-2 gap-4 text-sm mb-3">
                               <div>
                                 <span className="text-default-600">CPU:</span>{" "}
-                                {totalCpu} units
+                                <span className="font-medium">{totalCpu} units</span>
                               </div>
                               <div>
-                                <span className="text-default-600">
-                                  Memory:
-                                </span>{" "}
-                                {totalMemory}Gi
+                                <span className="text-default-600">Memory:</span>{" "}
+                                <span className="font-medium">{totalMemory}Gi</span>
                               </div>
                               <div>
-                                <span className="text-default-600">
-                                  Storage:
-                                </span>{" "}
-                                {totalStorage}Gi
+                                <span className="text-default-600">Storage:</span>{" "}
+                                <span className="font-medium">{totalStorage}Gi</span>
                               </div>
                               <div>
-                                <span className="text-default-600">
-                                  Max Price:
-                                </span>{" "}
-                                {maxPrice} SCU/hour
+                                <span className="text-default-600">Max Price:</span>{" "}
+                                <span className="font-medium text-primary">{maxPrice} SCU/hour</span>
+                              </div>
+                            </div>
+                            
+                            {/* GPU Requirements */}
+                            {(() => {
+                              const gpuRequirements = new Map();
+                              services.forEach(service => {
+                                if (service.resources.gpu && service.resources.gpu.configs && service.resources.gpu.configs.length > 0) {
+                                  const replicas = service.replicas || 1;
+                                  const gpuUnits = parseInt(service.resources.gpu.units || "0") || 0;
+                                  
+                                  if (gpuUnits > 0) {
+                                    service.resources.gpu.configs.forEach(config => {
+                                      const key = `${config.vendor}-${config.model}`;
+                                      const current = gpuRequirements.get(key) || { count: 0, memory: config.memory, interface: config.interface };
+                                      gpuRequirements.set(key, {
+                                        count: current.count + (gpuUnits * replicas),
+                                        memory: config.memory,
+                                        interface: config.interface
+                                      });
+                                    });
+                                  }
+                                }
+                              });
+                              
+                              let totalGpuUnits = 0;
+                              const gpuModels = new Set();
+                              
+                              services.forEach(service => {
+                                if (service.resources.gpu && service.resources.gpu.configs && service.resources.gpu.configs.length > 0) {
+                                  const replicas = service.replicas || 1;
+                                  const gpuUnits = parseInt(service.resources.gpu.units || "0") || 0;
+                                  
+                                  if (gpuUnits > 0) {
+                                    totalGpuUnits += gpuUnits * replicas;
+                                    service.resources.gpu.configs.forEach(config => {
+                                      gpuModels.add(`${config.vendor}-${config.model}-${config.memory}-${config.interface}`);
+                                    });
+                                  }
+                                }
+                              });
+                              
+                              const gpuReqs = {
+                                totalUnits: totalGpuUnits,
+                                models: Array.from(gpuModels).map(modelKey => {
+                                  const [vendor, model, memory, gpuInterface] = modelKey.split('-');
+                                  return { vendor, model, memory, interface: gpuInterface };
+                                })
+                              };
+                              
+                              return gpuReqs.totalUnits > 0 ? (
+                                <div className="border-t border-primary/20 pt-3">
+                                  <h4 className="font-semibold text-primary mb-2 text-sm">GPU Requirements</h4>
+                                  <div className="bg-primary/5 p-2 rounded mb-2">
+                                    <div className="flex justify-between items-center">
+                                      <span className="font-medium text-primary">Total Units:</span>
+                                      <span className="font-semibold text-primary">{gpuReqs.totalUnits}</span>
+                                    </div>
+                                  </div>
+                                  <div className="space-y-2">
+                                    {gpuReqs.models.map((model, index) => (
+                                      <div key={index} className="bg-primary/5 p-2 rounded text-xs">
+                                        <div className="font-medium text-primary">
+                                          {model.vendor} {model.model}
+                                        </div>
+                                        <div className="text-default-600">
+                                          Memory: <span className="font-medium">{model.memory}</span>
+                                          <span className="mx-2">•</span>
+                                          Interface: <span className="font-medium">{model.interface}</span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <div className="mt-2 p-2 bg-primary/10 rounded text-xs text-primary-700">
+                                    <strong>Note:</strong> Provider must have one of these GPU types available.
+                                  </div>
+                                </div>
+                              ) : null;
+                            })()}
+                            
+                            {/* Services Summary */}
+                            <div className="border-t border-primary/20 pt-3 mt-3">
+                              <h4 className="font-semibold text-default-700 mb-2 text-sm">Services Summary</h4>
+                              <div className="space-y-1">
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-default-600">Total Services:</span>
+                                  <span className="font-medium">{services.length}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-default-600">Total Replicas:</span>
+                                  <span className="font-medium">
+                                    {services.reduce((sum, service) => sum + (service.replicas || 1), 0)}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-default-600">Region:</span>
+                                  <span className="font-medium">
+                                    {selectedRegion === "any" ? "Any Region" : selectedRegion}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -1319,7 +1863,7 @@ function DeployPageContent() {
         {/* Sidebar - Only show when method is chosen */}
         {hasChosenMethod && (
           <div className="hidden lg:block w-80 flex-shrink-0">
-            <div className="sticky top-8 h-fit max-h-[calc(100vh-2rem)] overflow-y-auto">
+            <div className="sticky top-8 h-[calc(100vh-4rem)] overflow-y-auto">
               <DeploymentSummary
                 bids={bids}
                 deploymentMode={deploymentMode}
@@ -1334,10 +1878,12 @@ function DeployPageContent() {
                 totalGpu={totalGpu}
                 totalMemory={`${totalMemory}Gi`}
                 totalStorage={`${totalStorage}Gi`}
+                onMaxPriceChange={setMaxPrice}
               />
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {/* Template Selection Modal */}
