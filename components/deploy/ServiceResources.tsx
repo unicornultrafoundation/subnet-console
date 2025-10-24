@@ -108,6 +108,7 @@ export default function ServiceResources({ service, onUpdateService }: ServiceRe
                   }}
                   size="sm"
                   className="w-24"
+                  aria-label="CPU unit selector"
                   classNames={{
                     trigger: "border-blue-300 focus-within:border-blue-500"
                   }}
@@ -157,6 +158,7 @@ export default function ServiceResources({ service, onUpdateService }: ServiceRe
                   }}
                   size="sm"
                   className="w-24"
+                  aria-label="Memory unit selector"
                   classNames={{
                     trigger: "border-green-300 focus-within:border-green-500"
                   }}
@@ -179,6 +181,7 @@ export default function ServiceResources({ service, onUpdateService }: ServiceRe
                 checked={useGpu}
                 onChange={(e) => {
                   const checked = e.target.checked;
+                  console.log("GPU checkbox onChange:", checked);
                   setUseGpu(checked);
                   if (!checked) {
                     // Reset GPU units to 0 when unchecked
@@ -198,6 +201,7 @@ export default function ServiceResources({ service, onUpdateService }: ServiceRe
                 }`}
                 onClick={() => {
                   const newChecked = !useGpu;
+                  console.log("GPU div onClick:", newChecked);
                   setUseGpu(newChecked);
                   if (!newChecked) {
                     // Reset GPU units to 0 when unchecked
@@ -236,9 +240,13 @@ export default function ServiceResources({ service, onUpdateService }: ServiceRe
             </div>
           </div>
 
-          {parseInt(service.resources.gpu?.units || "0") > 0 && (
-            <GPUConfiguration service={service} onUpdateService={onUpdateService} />
-          )}
+          {(() => {
+            const gpuUnits = parseInt(service.resources.gpu?.units || "0");
+            console.log("GPU units:", gpuUnits, "useGpu:", useGpu, "service.resources.gpu:", service.resources.gpu);
+            return gpuUnits > 0 && (
+              <GPUConfiguration service={service} onUpdateService={onUpdateService} />
+            );
+          })()}
         </CardBody>
       )}
     </Card>

@@ -432,13 +432,6 @@ export default function ApplicationBuilder() {
                   <Code className="text-primary" size={20} />
                   <h3 className="text-lg font-semibold">Services Configuration</h3>
                 </div>
-                <Button
-                  color="primary"
-                  startContent={<Plus size={16} />}
-                  onClick={handleAddService}
-                >
-                  Add Service
-                </Button>
               </CardHeader>
               <CardBody>
                 {services.length === 0 ? (
@@ -514,6 +507,18 @@ export default function ApplicationBuilder() {
                     ))}
                   </div>
                 )}
+                
+                {/* Add Service Button */}
+                <div className="flex justify-center pt-4 border-t border-default-200 mt-6">
+                  <Button
+                    color="primary"
+                    startContent={<Plus size={16} />}
+                    onClick={handleAddService}
+                    size="lg"
+                  >
+                    Add Service
+                  </Button>
+                </div>
               </CardBody>
             </Card>
           </div>

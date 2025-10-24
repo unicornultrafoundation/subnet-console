@@ -341,7 +341,7 @@ export default function GPUConfiguration({ service, onUpdateService }: GPUConfig
           {service.resources.gpu?.configs?.length > 0 && (
             <div className="space-y-2">
               {service.resources.gpu.configs.map((gpu: any, index: number) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-default-50 rounded-lg border border-default-200">
+                <div key={`gpu-${gpu.vendor}-${gpu.model}-${gpu.memory}-${gpu.interface}-${index}`} className="flex items-center justify-between p-3 bg-default-50 rounded-lg border border-default-200">
                   <div className="flex items-center gap-3">
                     <Gpu className="text-primary" size={16} />
                     <div className="text-sm">

@@ -5,6 +5,7 @@ import ServiceBasicConfig from "./ServiceBasicConfig";
 import ServiceResources from "./ServiceResources";
 import ServiceVolumes from "./ServiceVolumes";
 import ServicePorts from "./ServicePorts";
+import ServiceEnvironment from "./ServiceEnvironment";
 
 interface BuilderConfigurationProps {
   service: any;
@@ -16,6 +17,7 @@ export default function BuilderConfiguration({ service, onUpdateService, availab
   return (
     <div className="space-y-6">
       <ServiceBasicConfig service={service} onUpdateService={onUpdateService} />
+      <ServiceEnvironment service={service} onUpdateService={onUpdateService} />
       <ServiceResources service={service} onUpdateService={onUpdateService} />
       <ServiceVolumes service={service} onUpdateService={onUpdateService} />
       <ServicePorts service={service} onUpdateService={onUpdateService} availableServices={availableServices} />

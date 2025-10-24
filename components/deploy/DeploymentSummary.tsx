@@ -173,12 +173,6 @@ export default function DeploymentSummary({
                 {deploymentName || "Not specified"}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-default-600">Mode:</span>
-              <Chip color="primary" size="sm" variant="flat" className="text-xs">
-                {deploymentMode === "template" ? "Template" : "App"}
-              </Chip>
-            </div>
             {selectedTemplate && (
               <div className="flex justify-between">
                 <span className="text-default-600">Template:</span>
