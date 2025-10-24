@@ -110,6 +110,7 @@ export default function VolumeConfiguration({ service, onUpdateService }: Volume
                       handleUpdateVolume(index, "type", selected);
                     }}
                     size="sm"
+                    aria-label="Select volume type"
                   >
                     {VOLUME_TYPES.map((type) => (
                       <SelectItem key={type.id}>
@@ -144,6 +145,7 @@ export default function VolumeConfiguration({ service, onUpdateService }: Volume
                       handleUpdateVolume(index, "size", `${value}${newUnit}`);
                     }}
                     size="sm"
+                    aria-label="Select volume size unit"
                   >
                     {VOLUME_UNITS.map((unit) => (
                       <SelectItem key={unit.id}>

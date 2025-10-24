@@ -263,6 +263,7 @@ export default function GPUConfiguration({ service, onUpdateService }: GPUConfig
                 setSelectedInterface(""); // Reset interface when vendor changes
               }}
               size="sm"
+              aria-label="Select GPU vendor"
             >
               {GPU_VENDORS.map((vendor) => (
                 <SelectItem key={vendor.id}>
@@ -282,6 +283,7 @@ export default function GPUConfiguration({ service, onUpdateService }: GPUConfig
               }}
               size="sm"
               isDisabled={!selectedVendor}
+              aria-label="Select GPU model"
             >
               {selectedVendor ? GPU_MODELS[selectedVendor as keyof typeof GPU_MODELS]?.map((model) => (
                 <SelectItem key={model.id}>
@@ -300,6 +302,7 @@ export default function GPUConfiguration({ service, onUpdateService }: GPUConfig
               }}
               size="sm"
               isDisabled={!selectedVendor || !selectedModel}
+              aria-label="Select GPU memory"
             >
               {selectedModel ? GPU_MEMORY_BY_MODEL[selectedModel as keyof typeof GPU_MEMORY_BY_MODEL]?.map((memory) => (
                 <SelectItem key={memory.id}>
@@ -317,6 +320,7 @@ export default function GPUConfiguration({ service, onUpdateService }: GPUConfig
               }}
               size="sm"
               isDisabled={!selectedVendor || !selectedModel || !selectedMemory}
+              aria-label="Select GPU interface"
             >
               {selectedModel ? GPU_INTERFACES_BY_MODEL[selectedModel as keyof typeof GPU_INTERFACES_BY_MODEL]?.map((gpuInterface) => (
                 <SelectItem key={gpuInterface.id}>

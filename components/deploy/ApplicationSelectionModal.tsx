@@ -144,6 +144,7 @@ export default function ApplicationSelectionModal({
 
     return (
       <div
+        key={app.id}
         className="cursor-pointer"
         onClick={(e) => {
           e.preventDefault();
@@ -153,7 +154,6 @@ export default function ApplicationSelectionModal({
         }}
       >
         <Card 
-          key={app.id} 
           className={`transition-all hover:shadow-lg ${
             isCurrentApp ? 'ring-2 ring-primary' : 'hover:border-primary/50'
           }`}
@@ -223,28 +223,67 @@ export default function ApplicationSelectionModal({
             <Tab key="my-apps" title="My Applications">
               <div className="space-y-4">
                 {myApplications.length === 0 ? (
-                  <div className="text-center py-8 text-default-500">
-                    <Code className="mx-auto text-default-400 mb-4" size={48} />
-                    <h3 className="text-lg font-semibold text-default-600 mb-2">
-                      No Applications Built
-                    </h3>
-                    <p className="text-default-500 mb-4">
-                      Start building your first application to get started
-                    </p>
-                    <Button
-                      color="primary"
-                      startContent={<Code size={16} />}
-                      onClick={() => {
-                        onClose();
-                        window.open('/applications/builder', '_blank');
-                      }}
-                    >
-                      Build Application
-                    </Button>
+                  <div className="text-center py-12 text-default-500">
+                    <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl p-8 mb-6">
+                      <Code className="mx-auto text-primary mb-4" size={64} />
+                      <h3 className="text-2xl font-bold text-primary mb-3">
+                        No Applications Built Yet
+                      </h3>
+                      <p className="text-default-600 mb-6 max-w-md mx-auto">
+                        Create your first application using our Application Builder to get started with deployment
+                      </p>
+                      <Button
+                        color="primary"
+                        size="lg"
+                        startContent={<Code size={20} />}
+                        onClick={() => {
+                          onClose();
+                          window.open('/applications/builder', '_blank');
+                        }}
+                        className="font-semibold px-8"
+                      >
+                        Open Application Builder
+                      </Button>
+                    </div>
+                    <div className="text-sm text-default-500">
+                      <p>💡 Tip: Use the Application Builder to create and configure your applications</p>
+                    </div>
                   </div>
                 ) : (
-                  <div className="grid md:grid-cols-2 gap-4">
-                    {myApplications.map(app => renderApplicationCard(app, false))}
+                  <div className="space-y-6">
+                    {/* Application Builder Section */}
+                    <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-xl p-6 border border-primary/20">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-primary/10 rounded-lg">
+                            <Code className="text-primary" size={24} />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-primary">Application Builder</h3>
+                            <p className="text-sm text-default-600">Create new applications or modify existing ones</p>
+                          </div>
+                        </div>
+                        <Button
+                          color="primary"
+                          variant="bordered"
+                          startContent={<Code size={16} />}
+                          onClick={() => {
+                            onClose();
+                            window.open('/applications/builder', '_blank');
+                          }}
+                        >
+                          Open Builder
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* My Applications */}
+                    <div>
+                      <h4 className="text-lg font-semibold mb-4">My Applications</h4>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {myApplications.map(app => renderApplicationCard(app, false))}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
