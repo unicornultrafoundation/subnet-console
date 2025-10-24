@@ -6,6 +6,7 @@ import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
 import { ArrowLeft, ArrowRight, CheckCircle, User, Settings, Eye, DollarSign, Play } from "lucide-react";
+import WalletAuthGuard from "@/components/auth/WalletAuthGuard";
 
 // Import step components
 import BasicInfoStep from "@/components/deploy/steps/BasicInfoStep";
@@ -28,8 +29,8 @@ interface Service {
   replicas: number;
   resources: {
     cpu: { units: string };
-    memory: { units: string };
-    storage: { units: string };
+    memory: { units: string; size?: string };
+    storage: { units: string; size?: string } | { size: string }[];
     gpu: { units: string };
   };
   volumes: any[];
@@ -51,7 +52,7 @@ const STEPS = [
   { id: 4, title: "Deploy", description: "Deploy application", icon: Play },
 ];
 
-export default function DeployPage() {
+function DeployPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -125,6 +126,19 @@ export default function DeployPage() {
           responseTime: "< 5min",
           successRate: "99.2%",
           features: ["High Performance", "24/7 Support", "Auto Scaling", "Backup", "DDoS Protection"],
+          availableResources: {
+            cpu: 128,
+            memory: 512,
+            storage: 10,
+            gpu: 8
+          },
+          cpuUtilization: "45%",
+          memoryUtilization: "62%",
+          storageUtilization: "38%",
+          gpuUtilization: "23%",
+          gpuModels: ["RTX 4090", "RTX 4080", "RTX 4070", "Tesla V100"],
+          gpuMemory: ["24GB GDDR6X", "16GB GDDR6X", "12GB GDDR6X", "32GB HBM2e"],
+          gpuInterface: ["PCIe 4.0 x16", "PCIe 3.0 x16", "NVLink", "Infinity Fabric"]
         },
         price: "25.50",
         specs: {
@@ -146,6 +160,19 @@ export default function DeployPage() {
           responseTime: "< 3min",
           successRate: "98.8%",
           features: ["Cost Effective", "Fast Deployment", "Monitoring", "SSL Certificate"],
+          availableResources: {
+            cpu: 96,
+            memory: 384,
+            storage: 8,
+            gpu: 4
+          },
+          cpuUtilization: "58%",
+          memoryUtilization: "71%",
+          storageUtilization: "45%",
+          gpuUtilization: "35%",
+          gpuModels: ["RTX 4080", "RTX 4070", "RTX 4060"],
+          gpuMemory: ["16GB GDDR6X", "12GB GDDR6X", "8GB GDDR6"],
+          gpuInterface: ["PCIe 4.0 x16", "PCIe 3.0 x16"]
         },
         price: "22.75",
         specs: {
@@ -167,6 +194,19 @@ export default function DeployPage() {
           responseTime: "< 2min",
           successRate: "99.5%",
           features: ["Enterprise Grade", "Global CDN", "DDoS Protection", "SSL Certificate", "Load Balancing"],
+          availableResources: {
+            cpu: 256,
+            memory: 1024,
+            storage: 20,
+            gpu: 16
+          },
+          cpuUtilization: "32%",
+          memoryUtilization: "48%",
+          storageUtilization: "25%",
+          gpuUtilization: "15%",
+          gpuModels: ["RTX 4090", "RTX 4080", "RTX 4070", "Tesla V100", "Tesla A100"],
+          gpuMemory: ["24GB GDDR6X", "16GB GDDR6X", "12GB GDDR6X", "32GB HBM2e", "80GB HBM2e"],
+          gpuInterface: ["PCIe 4.0 x16", "PCIe 3.0 x16", "NVLink", "Infinity Fabric", "NVSwitch"]
         },
         price: "28.00",
         specs: {
@@ -226,7 +266,7 @@ export default function DeployPage() {
   const handleNextStep = () => {
     // Validate Basic Info step
     if (currentStep === 0) {
-      const validationErrors = [];
+      const validationErrors: string[] = [];
       
       if (!deploymentName.trim()) {
         validationErrors.push("Deployment name is required");
@@ -252,7 +292,7 @@ export default function DeployPage() {
     
     // Validate Configuration step
     if (currentStep === 1) {
-      const validationErrors = [];
+      const validationErrors: string[] = [];
       
       // Check if at least one service exists
       if (services.length === 0) {
@@ -283,8 +323,8 @@ export default function DeployPage() {
         
         // Memory resources - Required
         let memorySize = 0;
-        if (service.resources.memory.size) {
-          memorySize = parseFloat(service.resources.memory.size.replace(/[^\d.]/g, "") || "0");
+        if ((service.resources.memory as any).size) {
+          memorySize = parseFloat((service.resources.memory as any).size.replace(/[^\d.]/g, "") || "0");
         } else if (service.resources.memory.units) {
           memorySize = parseFloat(service.resources.memory.units || "0");
         }
@@ -296,10 +336,10 @@ export default function DeployPage() {
         // Storage resources - Optional but validate if present
         let storageValid = true;
         if (Array.isArray(service.resources.storage) && service.resources.storage.length > 0) {
-          const storageSize = parseFloat(service.resources.storage[0].size.replace(/[^\d.]/g, "") || "0");
+          const storageSize = parseFloat((service.resources.storage[0] as any).size.replace(/[^\d.]/g, "") || "0");
           storageValid = storageSize > 0;
-        } else if (service.resources.storage.size) {
-          const storageSize = parseFloat(service.resources.storage.size.replace(/[^\d.]/g, "") || "0");
+        } else if ((service.resources.storage as any).size) {
+          const storageSize = parseFloat((service.resources.storage as any).size.replace(/[^\d.]/g, "") || "0");
           storageValid = storageSize > 0;
         }
         
@@ -346,7 +386,7 @@ export default function DeployPage() {
     
     // Validate Bidding step
     if (currentStep === 3) {
-      const validationErrors = [];
+      const validationErrors: string[] = [];
       
       // Check if any bids are available
       if (!bids || bids.length === 0) {
@@ -468,7 +508,7 @@ export default function DeployPage() {
       replicas: 1,
       resources: {
         cpu: { units: "1" },
-        memory: { size: "1Gi" },
+        memory: { units: "1", size: "1Gi" },
         storage: [{ size: "1Gi" }],
         gpu: { units: "0" },
       },
@@ -763,5 +803,13 @@ export default function DeployPage() {
         />
       </div>
     </div>
+  );
+}
+
+export default function DeployPage() {
+  return (
+    <WalletAuthGuard>
+      <DeployPageContent />
+    </WalletAuthGuard>
   );
 }

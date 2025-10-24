@@ -49,7 +49,7 @@ export default function HomePage() {
                 as={Link}
                 className="px-10 py-4 text-lg font-semibold subnet-button-primary"
                 color="primary"
-                href="/marketplace"
+                href="/deploy"
                 size="lg"
               >
                 Start Deploying
@@ -486,10 +486,10 @@ export default function HomePage() {
                     as={Link}
                     className="px-10 py-4 text-lg font-semibold subnet-button-primary"
                     color="primary"
-                    href="/marketplace"
+                    href="/deploy"
                     size="lg"
                   >
-                    Explore Marketplace
+                    Start Deploying
                   </Button>
                   <Button
                     as={Link}

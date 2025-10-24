@@ -23,7 +23,7 @@ export const useWallet = () => {
     isConnected: false,
     chainId: null,
     balance: null,
-    isLoading: false,
+    isLoading: true, // Start with loading true to prevent hydration mismatch
     error: null,
   });
 
@@ -96,6 +96,11 @@ export const useWallet = () => {
             storageError,
           );
         }
+
+        // Force a re-render by dispatching a custom event
+        window.dispatchEvent(new CustomEvent('walletConnected', { 
+          detail: { address, chainId, balance } 
+        }));
 
         return true;
       } else {
@@ -176,33 +181,59 @@ export const useWallet = () => {
 
   // Initialize wallet state from localStorage
   useEffect(() => {
-    const isConnected = localStorage.getItem("walletConnected") === "true";
-    const savedAddress = localStorage.getItem("walletAddress");
+    const initializeWallet = async () => {
+      // Only run on client side
+      if (typeof window === "undefined") return;
+      
+      const isConnected = localStorage.getItem("walletConnected") === "true";
+      const savedAddress = localStorage.getItem("walletAddress");
 
-    if (isConnected && savedAddress && isMetaMaskInstalled()) {
-      // Verify the connection is still valid
-      window.ethereum
-        .request({ method: "eth_accounts" })
-        .then((accounts: string[]) => {
+      if (isConnected && savedAddress && isMetaMaskInstalled()) {
+        try {
+          // Verify the connection is still valid
+          const accounts = await window.ethereum.request({ method: "eth_accounts" });
           if (accounts.includes(savedAddress)) {
-            setWalletState((prev) => ({
-              ...prev,
+            // Get updated chain ID and balance
+            const chainId = await window.ethereum.request({ method: "eth_chainId" });
+            let balance = "0";
+            try {
+              const balanceHex = await window.ethereum.request({
+                method: "eth_getBalance",
+                params: [savedAddress, "latest"],
+              });
+              balance = (parseInt(balanceHex, 16) / Math.pow(10, 18)).toFixed(4);
+            } catch (balanceError) {
+              console.warn("Failed to fetch balance:", balanceError);
+            }
+
+            setWalletState({
               address: savedAddress,
               isConnected: true,
-            }));
+              chainId,
+              balance,
+              isLoading: false,
+              error: null,
+            });
           } else {
             disconnectWallet();
           }
-        })
-        .catch(() => {
+        } catch (error) {
+          console.warn("Failed to verify wallet connection:", error);
           disconnectWallet();
-        });
-    }
+        }
+      } else {
+        // No saved connection, set loading to false
+        setWalletState(prev => ({ ...prev, isLoading: false }));
+      }
+    };
+
+    initializeWallet();
   }, [isMetaMaskInstalled, disconnectWallet]);
 
   // Listen for wallet events
   useEffect(() => {
-    if (!isMetaMaskInstalled()) return;
+    // Only run on client side
+    if (typeof window === "undefined" || !isMetaMaskInstalled()) return;
 
     const handleAccountsChanged = (accounts: string[]) => {
       if (accounts.length === 0) {
@@ -216,12 +247,28 @@ export const useWallet = () => {
       connectWallet();
     };
 
+    // Listen for custom wallet connection events
+    const handleWalletConnected = (event: CustomEvent) => {
+      const { address, chainId, balance } = event.detail;
+      setWalletState(prev => ({
+        ...prev,
+        address,
+        isConnected: true,
+        chainId,
+        balance,
+        isLoading: false,
+        error: null,
+      }));
+    };
+
     window.ethereum.on("accountsChanged", handleAccountsChanged);
     window.ethereum.on("chainChanged", handleChainChanged);
+    window.addEventListener('walletConnected', handleWalletConnected as EventListener);
 
     return () => {
       window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
       window.ethereum.removeListener("chainChanged", handleChainChanged);
+      window.removeEventListener('walletConnected', handleWalletConnected as EventListener);
     };
   }, [connectWallet, disconnectWallet, isMetaMaskInstalled]);
 
