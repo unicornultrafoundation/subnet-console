@@ -117,8 +117,12 @@ export default function DeploySteps({
             deploymentMode={deploymentMode}
             favouriteApps={favouriteApps}
             selectedApplication={selectedApplication}
+            services={services}
             validationErrors={validationErrors}
             onApplicationSelect={onApplicationSelect}
+            onUpdateService={() => {}}
+            onAddService={() => {}}
+            onRemoveService={() => {}}
             onMaxPriceChange={onMaxPriceChange}
           />
         );

@@ -54,9 +54,9 @@ export default function Configuration({
   });
 
   // Get unique categories
-  const categories = [
-    ...new Set(applications.map((app) => app.category).filter(Boolean)),
-  ];
+  const categories = Array.from(
+    new Set(applications.map((app) => app.category).filter(Boolean)),
+  );
 
   return (
     <div className="space-y-6">
@@ -92,10 +92,12 @@ export default function Configuration({
                   setSelectedCategory(selected || "");
                 }}
               >
-                <SelectItem key="">All Categories</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category}>{category}</SelectItem>
-                ))}
+                <>
+                  <SelectItem key="">All Categories</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category}>{category}</SelectItem>
+                  ))}
+                </>
               </Select>
             </div>
 

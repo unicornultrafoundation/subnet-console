@@ -73,14 +73,17 @@ export default function BasicInfoStep({
               onChange={(e) => onMaxPriceChange(e.target.value)}
             />
           </div>
-          <Input
-            multiline
-            label="Description"
-            minRows={3}
-            placeholder="Enter deployment description (optional)"
-            value={description}
-            onChange={(e) => onDescriptionChange(e.target.value)}
-          />
+          <div>
+            <span className="text-sm font-medium text-default-700 mb-2 block">
+              Description
+            </span>
+            <textarea
+              className="w-full min-h-[80px] px-3 py-2 rounded-lg border border-default-200 focus:border-primary focus:outline-none resize-none"
+              placeholder="Enter deployment description (optional)"
+              value={description}
+              onChange={(e) => onDescriptionChange(e.target.value)}
+            />
+          </div>
         </CardBody>
       </Card>
     </div>

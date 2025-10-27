@@ -119,7 +119,7 @@ export default function ReviewStep({
 
                 if (gpuUnits > 0) {
                   totalGpuUnits += gpuUnits * replicas;
-                  service.resources.gpu.configs.forEach((config) => {
+                  service.resources.gpu.configs.forEach((config: any) => {
                     gpuModels.add(
                       `${config.vendor}-${config.model}-${config.memory}-${config.interface}`,
                     );
@@ -130,9 +130,9 @@ export default function ReviewStep({
 
             const gpuReqs = {
               totalUnits: totalGpuUnits,
-              models: Array.from(gpuModels).map((modelKey) => {
+              models: Array.from(gpuModels).map((modelKey: unknown) => {
                 const [vendor, model, memory, gpuInterface] =
-                  modelKey.split("-");
+                  String(modelKey).split("-");
 
                 return { vendor, model, memory, interface: gpuInterface };
               }),

@@ -67,10 +67,14 @@ export default function ServiceBasicConfig({
                     ? "bg-primary border-primary"
                     : "bg-background border-default-300 hover:border-primary/50"
                 }`}
-                onClick={() => setShowRegistryAuth(!showRegistryAuth)}
-                onKeyDown={(e) => e.key === 'Enter' && setShowRegistryAuth(!showRegistryAuth)}
                 role="button"
                 tabIndex={0}
+                onClick={() => setShowRegistryAuth(!showRegistryAuth)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    setShowRegistryAuth(!showRegistryAuth);
+                  }
+                }}
               >
                 {showRegistryAuth && (
                   <svg
@@ -89,10 +93,14 @@ export default function ServiceBasicConfig({
             </div>
             <span
               className="text-sm text-default-600 cursor-pointer select-none"
-              onClick={() => setShowRegistryAuth(!showRegistryAuth)}
-              onKeyDown={(e) => e.key === 'Enter' && setShowRegistryAuth(!showRegistryAuth)}
               role="button"
               tabIndex={0}
+              onClick={() => setShowRegistryAuth(!showRegistryAuth)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  setShowRegistryAuth(!showRegistryAuth);
+                }
+              }}
             >
               Registry Auth
             </span>

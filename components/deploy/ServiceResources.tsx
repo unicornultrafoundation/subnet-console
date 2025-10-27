@@ -229,6 +229,8 @@ export default function ServiceResources({
                     ? "bg-primary border-primary"
                     : "bg-background border-default-300 hover:border-primary/50"
                 }`}
+                role="button"
+                tabIndex={0}
                 onClick={() => {
                   const newChecked = !useGpu;
 
@@ -242,8 +244,9 @@ export default function ServiceResources({
                   }
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (e.key === "Enter") {
                     const newChecked = !useGpu;
+
                     setUseGpu(newChecked);
                     if (!newChecked) {
                       onUpdateService("gpu_units", "0");
@@ -252,8 +255,6 @@ export default function ServiceResources({
                     }
                   }
                 }}
-                role="button"
-                tabIndex={0}
               >
                 {useGpu && (
                   <svg
@@ -274,6 +275,8 @@ export default function ServiceResources({
               <Gpu className="text-primary" size={16} />
               <span
                 className="text-sm font-medium text-default-700 cursor-pointer select-none"
+                role="button"
+                tabIndex={0}
                 onClick={() => {
                   const newChecked = !useGpu;
 
@@ -287,8 +290,9 @@ export default function ServiceResources({
                   }
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (e.key === "Enter") {
                     const newChecked = !useGpu;
+
                     setUseGpu(newChecked);
                     if (!newChecked) {
                       onUpdateService("gpu_units", "0");
@@ -297,8 +301,6 @@ export default function ServiceResources({
                     }
                   }
                 }}
-                role="button"
-                tabIndex={0}
               >
                 Use GPU
               </span>

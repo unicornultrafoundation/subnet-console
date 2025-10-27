@@ -181,19 +181,19 @@ export default function ApplicationSelectionModal({
       <div
         key={app.id}
         className="cursor-pointer"
+        role="button"
+        tabIndex={0}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
           handleSelectApplication(app);
         }}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
+          if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             handleSelectApplication(app);
           }
         }}
-        role="button"
-        tabIndex={0}
       >
         <Card
           className={`transition-all hover:shadow-lg ${
@@ -421,4 +421,3 @@ export default function ApplicationSelectionModal({
     </Modal>
   );
 }
-

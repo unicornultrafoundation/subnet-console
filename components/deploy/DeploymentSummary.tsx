@@ -99,7 +99,7 @@ export default function DeploymentSummary({
 
         if (gpuUnits > 0) {
           totalGpuUnits += gpuUnits * replicas;
-          service.resources.gpu.configs.forEach((config) => {
+          service.resources.gpu.configs.forEach((config: any) => {
             gpuModels.add(
               `${config.vendor}-${config.model}-${config.memory}-${config.interface}`,
             );
@@ -110,8 +110,8 @@ export default function DeploymentSummary({
 
     return {
       totalUnits: totalGpuUnits,
-      models: Array.from(gpuModels).map((modelKey) => {
-        const [vendor, model, memory, gpuInterface] = modelKey.split("-");
+      models: Array.from(gpuModels).map((modelKey: unknown) => {
+        const [vendor, model, memory, gpuInterface] = String(modelKey).split("-");
 
         return { vendor, model, memory, interface: gpuInterface };
       }),
@@ -132,7 +132,7 @@ export default function DeploymentSummary({
         "NVIDIA-A100": 0.8, // SCU per GPU per hour
         "AMD-RX7900XTX": 0.4, // SCU per GPU per hour
         default: 0.3, // SCU per GPU per hour for unknown models
-      },
+      } as Record<string, number>,
     };
 
     let totalPrice = 0;
@@ -221,17 +221,17 @@ export default function DeploymentSummary({
           <div className="bg-success/5 p-3 rounded text-xs">
             <div
               className="flex justify-between items-center mb-1 cursor-pointer hover:bg-success/10 rounded p-1 -m-1 transition-colors"
+              role="button"
+              tabIndex={0}
               title="Click to set as max price"
               onClick={() =>
                 onMaxPriceChange?.(priceEstimate.hourly.toFixed(2))
               }
               onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
+                if (e.key === "Enter" || e.key === " ") {
                   onMaxPriceChange?.(priceEstimate.hourly.toFixed(2));
                 }
               }}
-              role="button"
-              tabIndex={0}
             >
               <span className="font-medium text-success">Hourly:</span>
               <span className="font-semibold text-success">

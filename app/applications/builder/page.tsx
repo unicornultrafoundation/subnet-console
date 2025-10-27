@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
@@ -78,7 +78,7 @@ interface Application {
   updatedAt: string;
 }
 
-export default function ApplicationBuilder() {
+function ApplicationBuilderContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [applicationName, setApplicationName] = useState("");
@@ -423,9 +423,7 @@ export default function ApplicationBuilder() {
                   }}
                 >
                   {categories.map((category) => (
-                    <SelectItem key={category}>
-                      {category}
-                    </SelectItem>
+                    <SelectItem key={category}>{category}</SelectItem>
                   ))}
                 </Select>
 
@@ -588,5 +586,13 @@ export default function ApplicationBuilder() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ApplicationBuilder() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ApplicationBuilderContent />
+    </Suspense>
   );
 }
