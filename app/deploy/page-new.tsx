@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Card, CardBody, CardHeader } from "@heroui/card";
+import { Card, CardBody } from "@heroui/card";
 import { Button } from "@heroui/button";
-import { Chip } from "@heroui/chip";
 import { ArrowLeft, ArrowRight, CheckCircle } from "lucide-react";
 
 // Import step components
@@ -30,47 +29,50 @@ export default function DeployPage() {
   // State management
   const [currentStep, setCurrentStep] = useState(0);
   const [hasChosenMethod, setHasChosenMethod] = useState(false);
-  
+
   // Basic info state
   const [deploymentName, setDeploymentName] = useState("");
   const [description, setDescription] = useState("");
   const [maxPrice, setMaxPrice] = useState("10");
-  
+
   // Application state
   const [applications, setApplications] = useState<Application[]>([]);
-  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+  const [selectedApplication, setSelectedApplication] =
+    useState<Application | null>(null);
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
-  
+
   // Services state
   const [services, setServices] = useState<Service[]>([]);
-  
+
   // Resource totals
   const [totalCpu, setTotalCpu] = useState(0);
   const [totalMemory, setTotalMemory] = useState(0);
   const [totalStorage, setTotalStorage] = useState(0);
   const [estimatedPrice, setEstimatedPrice] = useState(0);
-  
+
   // Bidding state
   const [isBidAccepted, setIsBidAccepted] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [bidPrice, setBidPrice] = useState("");
   const [isEditingBid, setIsEditingBid] = useState(false);
-  
+
   // Validation errors
   const [errors, setErrors] = useState<string[]>([]);
 
   // Load applications on mount
   useEffect(() => {
-    const savedApps = JSON.parse(localStorage.getItem('applications') || '[]');
+    const savedApps = JSON.parse(localStorage.getItem("applications") || "[]");
+
     setApplications(savedApps);
-    
+
     // Check URL parameters for app selection
     const urlParams = new URLSearchParams(window.location.search);
-    const appId = urlParams.get('app');
-    const mode = urlParams.get('mode');
-    
-    if (appId && mode === 'application') {
+    const appId = urlParams.get("app");
+    const mode = urlParams.get("mode");
+
+    if (appId && mode === "application") {
       const app = savedApps.find((a: Application) => a.id === appId);
+
       if (app) {
         setSelectedApplication(app);
         setServices(app.services || []);
@@ -84,24 +86,30 @@ export default function DeployPage() {
     const totals = services.reduce(
       (acc, service) => {
         const cpu = parseInt((service.resources.cpu as any)?.units || "0");
-        const memory = parseInt((service.resources.memory as any)?.units || "0");
-        const storage = parseInt((service.resources.storage as any)?.units || "0");
-        
+        const memory = parseInt(
+          (service.resources.memory as any)?.units || "0",
+        );
+        const storage = parseInt(
+          (service.resources.storage as any)?.units || "0",
+        );
+
         return {
           cpu: acc.cpu + cpu * (service.replicas || 1),
           memory: acc.memory + memory * (service.replicas || 1),
           storage: acc.storage + storage * (service.replicas || 1),
         };
       },
-      { cpu: 0, memory: 0, storage: 0 }
+      { cpu: 0, memory: 0, storage: 0 },
     );
-    
+
     setTotalCpu(totals.cpu);
     setTotalMemory(totals.memory);
     setTotalStorage(totals.storage);
-    
+
     // Calculate estimated price (simplified)
-    const totalEstimatedPrice = (totals.cpu * 0.1 + totals.memory * 0.05 + totals.storage * 0.02) * 24;
+    const totalEstimatedPrice =
+      (totals.cpu * 0.1 + totals.memory * 0.05 + totals.storage * 0.02) * 24;
+
     setEstimatedPrice(totalEstimatedPrice);
   }, [services]);
 
@@ -134,6 +142,7 @@ export default function DeployPage() {
   // Service handlers
   const handleUpdateService = (index: number, updatedService: Service) => {
     const newServices = [...services];
+
     newServices[index] = updatedService;
     setServices(newServices);
   };
@@ -154,11 +163,13 @@ export default function DeployPage() {
       expose: [],
       env: [],
     };
+
     setServices([...services, newService]);
   };
 
   const handleRemoveService = (index: number) => {
     const newServices = services.filter((_, i) => i !== index);
+
     setServices(newServices);
   };
 
@@ -185,73 +196,73 @@ export default function DeployPage() {
           <BasicInfoStep
             deploymentName={deploymentName}
             description={description}
+            errors={errors}
             maxPrice={maxPrice}
+            onClearErrors={() => setErrors([])}
             onDeploymentNameChange={setDeploymentName}
             onDescriptionChange={setDescription}
             onMaxPriceChange={handleMaxPriceChange}
-            errors={errors}
-            onClearErrors={() => setErrors([])}
           />
         );
-      
+
       case 1:
         return (
           <ConfigurationStep
             applications={applications}
+            errors={errors}
             selectedApplication={selectedApplication}
             services={services}
-            onApplicationSelect={handleApplicationSelect}
-            onUpdateService={handleUpdateService}
             onAddService={handleAddService}
-            onRemoveService={handleRemoveService}
-            onOpenApplicationModal={() => setIsApplicationModalOpen(true)}
-            errors={errors}
+            onApplicationSelect={handleApplicationSelect}
             onClearErrors={() => setErrors([])}
+            onOpenApplicationModal={() => setIsApplicationModalOpen(true)}
+            onRemoveService={handleRemoveService}
+            onUpdateService={handleUpdateService}
           />
         );
-      
+
       case 2:
         return (
           <ReviewStep
             deploymentName={deploymentName}
             description={description}
+            estimatedPrice={estimatedPrice}
             maxPrice={maxPrice}
             services={services}
             totalCpu={totalCpu}
             totalMemory={totalMemory}
             totalStorage={totalStorage}
-            estimatedPrice={estimatedPrice}
             onMaxPriceChange={handleMaxPriceChange}
           />
         );
-      
+
       case 3:
         return (
           <BiddingStep
-            services={services}
-            maxPrice={maxPrice}
             bidPrice={bidPrice}
             isBidAccepted={isBidAccepted}
-            selectedProvider={selectedProvider}
             isEditingBid={isEditingBid}
-            onBidPriceChange={handleBidPriceChange}
+            maxPrice={maxPrice}
+            selectedProvider={selectedProvider}
+            services={services}
             onAcceptBid={handleAcceptBid}
+            onBidPriceChange={handleBidPriceChange}
+            onClearErrors={() => setErrors([])}
             onEditBid={() => setIsEditingBid(true)}
             onSaveBid={() => setIsEditingBid(false)}
-            onClearErrors={() => setErrors([])}
           />
         );
-      
+
       case 4:
         return (
           <DeployStep
-            deploymentName={deploymentName}
-            services={services}
-            selectedProvider={selectedProvider}
             bidPrice={bidPrice}
+            deploymentName={deploymentName}
+            selectedProvider={selectedProvider}
+            services={services}
           />
         );
-      
+
       default:
         return null;
     }
@@ -282,18 +293,16 @@ export default function DeployPage() {
         {/* Main Content */}
         <div className="max-w-4xl mx-auto">
           <Card className="subnet-card">
-            <CardBody className="p-8">
-              {renderCurrentStep()}
-            </CardBody>
+            <CardBody className="p-8">{renderCurrentStep()}</CardBody>
           </Card>
 
           {/* Navigation */}
           <div className="flex justify-between mt-8">
             <Button
-              variant="ghost"
-              startContent={<ArrowLeft size={20} />}
-              onPress={handlePrevStep}
               isDisabled={currentStep === 0}
+              startContent={<ArrowLeft size={20} />}
+              variant="ghost"
+              onPress={handlePrevStep}
             >
               Previous
             </Button>
@@ -311,8 +320,8 @@ export default function DeployPage() {
                 <Button
                   color="primary"
                   endContent={<ArrowRight size={20} />}
-                  onPress={handleNextStep}
                   size="lg"
+                  onPress={handleNextStep}
                 >
                   Next
                 </Button>
@@ -323,9 +332,9 @@ export default function DeployPage() {
 
         {/* Application Selection Modal */}
         <ApplicationSelectionModal
+          applications={applications}
           isOpen={isApplicationModalOpen}
           onClose={() => setIsApplicationModalOpen(false)}
-          applications={applications}
           onSelectApplication={handleApplicationSelectFromModal}
         />
       </div>

@@ -22,7 +22,7 @@ export default function BasicInfoStep({
   onDeploymentNameChange,
   onDescriptionChange,
   onMaxPriceChange,
-  validationErrors
+  validationErrors,
 }: BasicInfoStepProps) {
   return (
     <div className="space-y-6">
@@ -32,7 +32,9 @@ export default function BasicInfoStep({
           <CardBody className="p-4">
             <div className="flex items-center gap-2 text-danger">
               <Settings size={16} />
-              <span className="font-medium">Please fix the following issues:</span>
+              <span className="font-medium">
+                Please fix the following issues:
+              </span>
             </div>
             <ul className="mt-2 space-y-1">
               {validationErrors.map((error, index) => (
@@ -54,30 +56,30 @@ export default function BasicInfoStep({
         <CardBody className="space-y-4">
           <div className="grid md:grid-cols-2 gap-4">
             <Input
+              isRequired
               label="Deployment Name"
               placeholder="Enter deployment name"
               value={deploymentName}
               onChange={(e) => onDeploymentNameChange(e.target.value)}
-              isRequired
             />
             <Input
+              isRequired
               label="Max Price (SCU/hour)"
-              placeholder="1.0"
-              type="number"
-              step="0.1"
               min="0"
+              placeholder="1.0"
+              step="0.1"
+              type="number"
               value={maxPrice}
               onChange={(e) => onMaxPriceChange(e.target.value)}
-              isRequired
             />
           </div>
           <Input
+            multiline
             label="Description"
+            minRows={3}
             placeholder="Enter deployment description (optional)"
             value={description}
             onChange={(e) => onDescriptionChange(e.target.value)}
-            multiline
-            minRows={3}
           />
         </CardBody>
       </Card>

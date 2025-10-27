@@ -4,6 +4,7 @@ import React from "react";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { HardDrive, ChevronUp, ChevronDown } from "lucide-react";
+
 import VolumeConfiguration from "./VolumeConfiguration";
 
 interface ServiceVolumesProps {
@@ -11,11 +12,17 @@ interface ServiceVolumesProps {
   onUpdateService: (field: string, value: any) => void;
 }
 
-export default function ServiceVolumes({ service, onUpdateService }: ServiceVolumesProps) {
-  const [collapsedSections, setCollapsedSections] = React.useState<Set<string>>(new Set());
+export default function ServiceVolumes({
+  service,
+  onUpdateService,
+}: ServiceVolumesProps) {
+  const [collapsedSections, setCollapsedSections] = React.useState<Set<string>>(
+    new Set(),
+  );
 
   const toggleSection = (section: string) => {
     const newCollapsed = new Set(collapsedSections);
+
     if (newCollapsed.has(section)) {
       newCollapsed.delete(section);
     } else {
@@ -26,7 +33,7 @@ export default function ServiceVolumes({ service, onUpdateService }: ServiceVolu
 
   return (
     <Card className="subnet-card">
-      <CardHeader 
+      <CardHeader
         className="flex items-center justify-between cursor-pointer"
         onClick={() => toggleSection("volumes")}
       >
@@ -43,12 +50,19 @@ export default function ServiceVolumes({ service, onUpdateService }: ServiceVolu
             toggleSection("volumes");
           }}
         >
-          {collapsedSections.has("volumes") ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+          {collapsedSections.has("volumes") ? (
+            <ChevronDown size={16} />
+          ) : (
+            <ChevronUp size={16} />
+          )}
         </Button>
       </CardHeader>
       {!collapsedSections.has("volumes") && (
         <CardBody>
-          <VolumeConfiguration service={service} onUpdateService={onUpdateService} />
+          <VolumeConfiguration
+            service={service}
+            onUpdateService={onUpdateService}
+          />
         </CardBody>
       )}
     </Card>

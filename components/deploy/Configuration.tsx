@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+
 import ApplicationConfiguration from "./ApplicationConfiguration";
 
 interface ConfigurationProps {
@@ -38,8 +39,8 @@ export default function Configuration({
       {selectedApp && (
         <ApplicationConfiguration
           services={services}
-          onUpdateService={onUpdateService}
           onRemoveService={onRemoveService}
+          onUpdateService={onUpdateService}
         />
       )}
     </div>

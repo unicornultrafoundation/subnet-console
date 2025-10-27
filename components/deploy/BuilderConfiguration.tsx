@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+
 import ServiceBasicConfig from "./ServiceBasicConfig";
 import ServiceResources from "./ServiceResources";
 import ServiceVolumes from "./ServiceVolumes";
@@ -13,14 +14,22 @@ interface BuilderConfigurationProps {
   availableServices?: string[];
 }
 
-export default function BuilderConfiguration({ service, onUpdateService, availableServices = [] }: BuilderConfigurationProps) {
+export default function BuilderConfiguration({
+  service,
+  onUpdateService,
+  availableServices = [],
+}: BuilderConfigurationProps) {
   return (
     <div className="space-y-6">
       <ServiceBasicConfig service={service} onUpdateService={onUpdateService} />
       <ServiceEnvironment service={service} onUpdateService={onUpdateService} />
       <ServiceResources service={service} onUpdateService={onUpdateService} />
       <ServiceVolumes service={service} onUpdateService={onUpdateService} />
-      <ServicePorts service={service} onUpdateService={onUpdateService} availableServices={availableServices} />
+      <ServicePorts
+        availableServices={availableServices}
+        service={service}
+        onUpdateService={onUpdateService}
+      />
     </div>
   );
 }

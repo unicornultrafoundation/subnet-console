@@ -6,6 +6,7 @@ import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { Cpu, MemoryStick, Gpu, ChevronUp, ChevronDown } from "lucide-react";
+
 import GPUConfiguration from "./GPUConfiguration";
 
 // CPU Units
@@ -27,18 +28,27 @@ interface ServiceResourcesProps {
   onUpdateService: (field: string, value: any) => void;
 }
 
-export default function ServiceResources({ service, onUpdateService }: ServiceResourcesProps) {
-  const [collapsedSections, setCollapsedSections] = React.useState<Set<string>>(new Set());
-  const [useGpu, setUseGpu] = React.useState(parseInt(service.resources.gpu?.units || "0") > 0);
+export default function ServiceResources({
+  service,
+  onUpdateService,
+}: ServiceResourcesProps) {
+  const [collapsedSections, setCollapsedSections] = React.useState<Set<string>>(
+    new Set(),
+  );
+  const [useGpu, setUseGpu] = React.useState(
+    parseInt(service.resources.gpu?.units || "0") > 0,
+  );
 
   // Sync useGpu state when GPU units change
   React.useEffect(() => {
     const gpuUnits = parseInt(service.resources.gpu?.units || "0");
+
     setUseGpu(gpuUnits > 0);
   }, [service.resources.gpu?.units]);
 
   const toggleSection = (section: string) => {
     const newCollapsed = new Set(collapsedSections);
+
     if (newCollapsed.has(section)) {
       newCollapsed.delete(section);
     } else {
@@ -49,7 +59,7 @@ export default function ServiceResources({ service, onUpdateService }: ServiceRe
 
   return (
     <Card className="subnet-card">
-      <CardHeader 
+      <CardHeader
         className="flex items-center justify-between cursor-pointer"
         onClick={() => toggleSection("resources")}
       >
@@ -66,7 +76,11 @@ export default function ServiceResources({ service, onUpdateService }: ServiceRe
             toggleSection("resources");
           }}
         >
-          {collapsedSections.has("resources") ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+          {collapsedSections.has("resources") ? (
+            <ChevronDown size={16} />
+          ) : (
+            <ChevronUp size={16} />
+          )}
         </Button>
       </CardHeader>
       {!collapsedSections.has("resources") && (
@@ -85,38 +99,45 @@ export default function ServiceResources({ service, onUpdateService }: ServiceRe
               </div>
               <div className="flex items-center gap-2">
                 <Input
-                  value={service.resources.cpu.units.replace(/[^\d.]/g, "")}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    const unit = service.resources.cpu.units.replace(/[\d.]/g, "") || "cores";
-                    onUpdateService("cpu", `${value}${unit}`);
-                  }}
-                  placeholder="0"
-                  size="sm"
                   className="flex-1"
                   classNames={{
                     input: "text-center font-medium",
-                    inputWrapper: "border-blue-300 focus-within:border-blue-500"
+                    inputWrapper:
+                      "border-blue-300 focus-within:border-blue-500",
+                  }}
+                  placeholder="0"
+                  size="sm"
+                  value={service.resources.cpu.units.replace(/[^\d.]/g, "")}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const unit =
+                      service.resources.cpu.units.replace(/[\d.]/g, "") ||
+                      "cores";
+
+                    onUpdateService("cpu", `${value}${unit}`);
                   }}
                 />
                 <Select
-                  selectedKeys={[service.resources.cpu.units.replace(/[\d.]/g, "") || "cores"]}
+                  aria-label="CPU unit selector"
+                  className="w-24"
+                  classNames={{
+                    trigger: "border-blue-300 focus-within:border-blue-500",
+                  }}
+                  selectedKeys={[
+                    service.resources.cpu.units.replace(/[\d.]/g, "") ||
+                      "cores",
+                  ]}
+                  size="sm"
                   onSelectionChange={(keys) => {
                     const newUnit = Array.from(keys)[0] as string;
-                    const value = service.resources.cpu.units.replace(/[^\d.]/g, "") || "0";
+                    const value =
+                      service.resources.cpu.units.replace(/[^\d.]/g, "") || "0";
+
                     onUpdateService("cpu", `${value}${newUnit}`);
-                  }}
-                  size="sm"
-                  className="w-24"
-                  aria-label="CPU unit selector"
-                  classNames={{
-                    trigger: "border-blue-300 focus-within:border-blue-500"
                   }}
                 >
                   {CPU_UNITS.map((option) => (
-                    <SelectItem key={option.id}>
-                      {option.name}
-                    </SelectItem>
+                    <SelectItem key={option.id}>{option.name}</SelectItem>
                   ))}
                 </Select>
               </div>
@@ -129,44 +150,53 @@ export default function ServiceResources({ service, onUpdateService }: ServiceRe
                   <MemoryStick className="text-white" size={16} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-green-900">Memory</h3>
+                  <h3 className="text-sm font-semibold text-green-900">
+                    Memory
+                  </h3>
                   <p className="text-xs text-green-600">RAM allocation</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <Input
-                  value={service.resources.memory.size.replace(/[^\d.]/g, "")}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    const unit = service.resources.memory.size.replace(/[\d.]/g, "") || "GB";
-                    onUpdateService("memory", `${value}${unit}`);
-                  }}
-                  placeholder="0"
-                  size="sm"
                   className="flex-1"
                   classNames={{
                     input: "text-center font-medium",
-                    inputWrapper: "border-green-300 focus-within:border-green-500"
+                    inputWrapper:
+                      "border-green-300 focus-within:border-green-500",
+                  }}
+                  placeholder="0"
+                  size="sm"
+                  value={service.resources.memory.size.replace(/[^\d.]/g, "")}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const unit =
+                      service.resources.memory.size.replace(/[\d.]/g, "") ||
+                      "GB";
+
+                    onUpdateService("memory", `${value}${unit}`);
                   }}
                 />
                 <Select
-                  selectedKeys={[service.resources.memory.size.replace(/[\d.]/g, "") || "GB"]}
+                  aria-label="Memory unit selector"
+                  className="w-24"
+                  classNames={{
+                    trigger: "border-green-300 focus-within:border-green-500",
+                  }}
+                  selectedKeys={[
+                    service.resources.memory.size.replace(/[\d.]/g, "") || "GB",
+                  ]}
+                  size="sm"
                   onSelectionChange={(keys) => {
                     const newUnit = Array.from(keys)[0] as string;
-                    const value = service.resources.memory.size.replace(/[^\d.]/g, "") || "0";
+                    const value =
+                      service.resources.memory.size.replace(/[^\d.]/g, "") ||
+                      "0";
+
                     onUpdateService("memory", `${value}${newUnit}`);
-                  }}
-                  size="sm"
-                  className="w-24"
-                  aria-label="Memory unit selector"
-                  classNames={{
-                    trigger: "border-green-300 focus-within:border-green-500"
                   }}
                 >
                   {MEMORY_UNITS.map((option) => (
-                    <SelectItem key={option.id}>
-                      {option.name}
-                    </SelectItem>
+                    <SelectItem key={option.id}>{option.name}</SelectItem>
                   ))}
                 </Select>
               </div>
@@ -177,10 +207,12 @@ export default function ServiceResources({ service, onUpdateService }: ServiceRe
           <div className="flex items-center gap-2 p-3 bg-default-50 rounded-lg border border-default-200">
             <div className="relative">
               <input
-                type="checkbox"
                 checked={useGpu}
+                className="sr-only"
+                type="checkbox"
                 onChange={(e) => {
                   const checked = e.target.checked;
+
                   console.log("GPU checkbox onChange:", checked);
                   setUseGpu(checked);
                   if (!checked) {
@@ -191,16 +223,16 @@ export default function ServiceResources({ service, onUpdateService }: ServiceRe
                     onUpdateService("gpu_units", "1");
                   }
                 }}
-                className="sr-only"
               />
               <div
                 className={`w-5 h-5 rounded border-2 cursor-pointer transition-all duration-200 flex items-center justify-center ${
                   useGpu
-                    ? 'bg-primary border-primary'
-                    : 'bg-background border-default-300 hover:border-primary/50'
+                    ? "bg-primary border-primary"
+                    : "bg-background border-default-300 hover:border-primary/50"
                 }`}
                 onClick={() => {
                   const newChecked = !useGpu;
+
                   console.log("GPU div onClick:", newChecked);
                   setUseGpu(newChecked);
                   if (!newChecked) {
@@ -213,8 +245,16 @@ export default function ServiceResources({ service, onUpdateService }: ServiceRe
                 }}
               >
                 {useGpu && (
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  <svg
+                    className="w-3 h-3 text-white"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      clipRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      fillRule="evenodd"
+                    />
                   </svg>
                 )}
               </div>
@@ -225,6 +265,7 @@ export default function ServiceResources({ service, onUpdateService }: ServiceRe
                 className="text-sm font-medium text-default-700 cursor-pointer select-none"
                 onClick={() => {
                   const newChecked = !useGpu;
+
                   setUseGpu(newChecked);
                   if (!newChecked) {
                     // Reset GPU units to 0 when unchecked
@@ -242,9 +283,23 @@ export default function ServiceResources({ service, onUpdateService }: ServiceRe
 
           {(() => {
             const gpuUnits = parseInt(service.resources.gpu?.units || "0");
-            console.log("GPU units:", gpuUnits, "useGpu:", useGpu, "service.resources.gpu:", service.resources.gpu);
-            return gpuUnits > 0 && (
-              <GPUConfiguration service={service} onUpdateService={onUpdateService} />
+
+            console.log(
+              "GPU units:",
+              gpuUnits,
+              "useGpu:",
+              useGpu,
+              "service.resources.gpu:",
+              service.resources.gpu,
+            );
+
+            return (
+              gpuUnits > 0 && (
+                <GPUConfiguration
+                  service={service}
+                  onUpdateService={onUpdateService}
+                />
+              )
             );
           })()}
         </CardBody>

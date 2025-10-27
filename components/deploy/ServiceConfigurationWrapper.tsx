@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+
 import BuilderConfiguration from "./BuilderConfiguration";
 
 interface ServiceConfigurationWrapperProps {
@@ -9,10 +10,10 @@ interface ServiceConfigurationWrapperProps {
   availableServices: string[];
 }
 
-export default function ServiceConfigurationWrapper({ 
-  service, 
-  onUpdateService, 
-  availableServices 
+export default function ServiceConfigurationWrapper({
+  service,
+  onUpdateService,
+  availableServices,
 }: ServiceConfigurationWrapperProps) {
   const handleUpdateService = (field: string, value: any) => {
     onUpdateService(service.name, field, value);
@@ -20,9 +21,9 @@ export default function ServiceConfigurationWrapper({
 
   return (
     <BuilderConfiguration
+      availableServices={availableServices}
       service={service}
       onUpdateService={handleUpdateService}
-      availableServices={availableServices}
     />
   );
 }

@@ -6,7 +6,8 @@ import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
-import { Heart, Server, Code, Cpu, HardDrive, MemoryStick, Gpu } from "lucide-react";
+import { Heart, Server, Cpu, HardDrive, MemoryStick, Gpu } from "lucide-react";
+
 import ApplicationConfiguration from "./ApplicationConfiguration";
 
 interface ConfigurationProps {
@@ -43,14 +44,19 @@ export default function Configuration({
 
   // Filter applications based on search term and category
   const filteredApplications = applications.filter((app) => {
-    const matchesSearch = app.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        app.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = !selectedCategory || app.category === selectedCategory;
+    const matchesSearch =
+      app.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      app.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory =
+      !selectedCategory || app.category === selectedCategory;
+
     return matchesSearch && matchesCategory;
   });
 
   // Get unique categories
-  const categories = [...new Set(applications.map(app => app.category).filter(Boolean))];
+  const categories = [
+    ...new Set(applications.map((app) => app.category).filter(Boolean)),
+  ];
 
   return (
     <div className="space-y-6">
@@ -63,29 +69,31 @@ export default function Configuration({
           </CardHeader>
           <CardBody className="space-y-4">
             <p className="text-default-600">
-              Choose from pre-built applications or create your own custom deployment.
+              Choose from pre-built applications or create your own custom
+              deployment.
             </p>
 
             {/* Search and Filter */}
             <div className="flex items-center gap-4">
               <Input
+                className="flex-1"
                 placeholder="Search applications..."
                 startContent={<Server size={16} />}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1"
               />
               <Select
+                className="w-48"
                 placeholder="All Categories"
                 selectedKeys={selectedCategory ? [selectedCategory] : []}
                 onSelectionChange={(keys) => {
                   const selected = Array.from(keys)[0] as string;
+
                   setSelectedCategory(selected || "");
                 }}
-                className="w-48"
               >
                 <SelectItem key="">All Categories</SelectItem>
-                {categories.map(category => (
+                {categories.map((category) => (
                   <SelectItem key={category}>{category}</SelectItem>
                 ))}
               </Select>
@@ -94,55 +102,89 @@ export default function Configuration({
             {/* Applications Grid */}
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredApplications.map((app) => (
-                <Card 
-                  key={app.id} 
+                <Card
+                  key={app.id}
                   className={`cursor-pointer transition-all hover:shadow-lg ${
-                    selectedApp === app.id ? 'ring-2 ring-primary' : 'hover:border-primary/50'
+                    selectedApp === app.id
+                      ? "ring-2 ring-primary"
+                      : "hover:border-primary/50"
                   }`}
                   onClick={() => onApplicationSelect(app.id)}
                 >
                   <CardHeader className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <Chip size="sm" color="primary" variant="flat">
-                          {app.category || 'Custom'}
+                        <Chip color="primary" size="sm" variant="flat">
+                          {app.category || "Custom"}
                         </Chip>
                         <Button
                           isIconOnly
+                          color={
+                            favouriteApps.includes(app.id)
+                              ? "danger"
+                              : "default"
+                          }
                           size="sm"
                           variant="light"
-                          color={favouriteApps.includes(app.id) ? "danger" : "default"}
                           onClick={(e) => {
                             e.stopPropagation();
                             onToggleFavouriteApp(app.id);
                           }}
                         >
-                          <Heart size={14} fill={favouriteApps.includes(app.id) ? "currentColor" : "none"} />
+                          <Heart
+                            fill={
+                              favouriteApps.includes(app.id)
+                                ? "currentColor"
+                                : "none"
+                            }
+                            size={14}
+                          />
                         </Button>
                       </div>
-                      <h3 className="font-semibold text-default-900 mb-1">{app.name}</h3>
-                      <p className="text-sm text-default-600 mb-2">{app.description}</p>
+                      <h3 className="font-semibold text-default-900 mb-1">
+                        {app.name}
+                      </h3>
+                      <p className="text-sm text-default-600 mb-2">
+                        {app.description}
+                      </p>
                       <div className="flex items-center gap-4 text-xs text-default-500">
                         <div className="flex items-center gap-1">
                           <Cpu className="text-primary" size={14} />
-                          <span>{app.resources?.cpu ? (typeof app.resources.cpu === 'string' ? app.resources.cpu : (app.resources.cpu as any)?.units) : 'N/A'}</span>
+                          <span>
+                            {app.resources?.cpu
+                              ? typeof app.resources.cpu === "string"
+                                ? app.resources.cpu
+                                : (app.resources.cpu as any)?.units
+                              : "N/A"}
+                          </span>
                         </div>
                         <div className="flex items-center gap-1">
                           <MemoryStick className="text-primary" size={14} />
-                          <span>{app.resources?.memory ? (typeof app.resources.memory === 'string' ? app.resources.memory : (app.resources.memory as any)?.size) : 'N/A'}</span>
+                          <span>
+                            {app.resources?.memory
+                              ? typeof app.resources.memory === "string"
+                                ? app.resources.memory
+                                : (app.resources.memory as any)?.size
+                              : "N/A"}
+                          </span>
                         </div>
                         <div className="flex items-center gap-1">
                           <HardDrive className="text-primary" size={14} />
-                          <span>{app.resources?.storage ? (typeof app.resources.storage === 'string' ? app.resources.storage : (app.resources.storage as any)?.[0]?.size) : 'N/A'}</span>
+                          <span>
+                            {app.resources?.storage
+                              ? typeof app.resources.storage === "string"
+                                ? app.resources.storage
+                                : (app.resources.storage as any)?.[0]?.size
+                              : "N/A"}
+                          </span>
                         </div>
                         {(app.resources as any)?.gpu && (
                           <div className="flex items-center gap-1">
                             <Gpu className="text-primary" size={14} />
                             <span>
-                              {typeof (app.resources as any).gpu === 'string' 
-                                ? (app.resources as any).gpu 
-                                : `${(app.resources as any).gpu?.units || 0} ${(app.resources as any).gpu?.model || 'GPU'}`
-                              }
+                              {typeof (app.resources as any).gpu === "string"
+                                ? (app.resources as any).gpu
+                                : `${(app.resources as any).gpu?.units || 0} ${(app.resources as any).gpu?.model || "GPU"}`}
                             </span>
                           </div>
                         )}
@@ -160,8 +202,8 @@ export default function Configuration({
       {selectedApp && (
         <ApplicationConfiguration
           services={services}
-          onUpdateService={onUpdateService}
           onRemoveService={onRemoveService}
+          onUpdateService={onUpdateService}
         />
       )}
     </div>

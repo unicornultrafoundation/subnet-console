@@ -5,6 +5,7 @@ import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
 import { Code, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+
 import ServiceConfigurationWrapper from "./ServiceConfigurationWrapper";
 
 interface ApplicationConfigurationProps {
@@ -13,15 +14,18 @@ interface ApplicationConfigurationProps {
   onRemoveService: (serviceName: string) => void;
 }
 
-export default function ApplicationConfiguration({ 
-  services, 
-  onUpdateService, 
-  onRemoveService 
+export default function ApplicationConfiguration({
+  services,
+  onUpdateService,
+  onRemoveService,
 }: ApplicationConfigurationProps) {
-  const [collapsedServices, setCollapsedServices] = useState<Set<number>>(new Set());
+  const [collapsedServices, setCollapsedServices] = useState<Set<number>>(
+    new Set(),
+  );
 
   const toggleServiceCollapse = (index: number) => {
     const newCollapsed = new Set(collapsedServices);
+
     if (newCollapsed.has(index)) {
       newCollapsed.delete(index);
     } else {
@@ -60,7 +64,11 @@ export default function ApplicationConfiguration({
                     variant="light"
                     onClick={() => toggleServiceCollapse(index)}
                   >
-                    {collapsedServices.has(index) ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                    {collapsedServices.has(index) ? (
+                      <ChevronDown size={16} />
+                    ) : (
+                      <ChevronUp size={16} />
+                    )}
                   </Button>
                   <Button
                     isIconOnly
@@ -76,9 +84,11 @@ export default function ApplicationConfiguration({
               {!collapsedServices.has(index) && (
                 <CardBody>
                   <ServiceConfigurationWrapper
+                    availableServices={services
+                      .filter((s) => s.name !== service.name)
+                      .map((s) => s.name)}
                     service={service}
                     onUpdateService={onUpdateService}
-                    availableServices={services.filter(s => s.name !== service.name).map(s => s.name)}
                   />
                 </CardBody>
               )}

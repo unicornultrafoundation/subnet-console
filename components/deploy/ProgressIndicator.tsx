@@ -1,6 +1,5 @@
 "use client";
 
-import { Card, CardBody } from "@heroui/card";
 import { Check } from "lucide-react";
 
 interface Tab {
@@ -26,7 +25,7 @@ export default function ProgressIndicator({
             const isCompleted = index < currentTab;
             const isCurrent = index === currentTab;
             const isPending = index > currentTab;
-            
+
             return (
               <div key={tab.id} className="flex items-center flex-1">
                 {/* Step Circle */}
@@ -36,16 +35,16 @@ export default function ProgressIndicator({
                       isCompleted
                         ? "bg-gradient-to-r from-green-500 to-emerald-500 border-green-500 text-white shadow-lg shadow-green-500/25"
                         : isCurrent
-                        ? "bg-gradient-to-r from-blue-500 to-indigo-500 border-blue-500 text-white shadow-lg shadow-blue-500/25 animate-pulse"
-                        : "bg-white border-gray-300 text-gray-400"
+                          ? "bg-gradient-to-r from-blue-500 to-indigo-500 border-blue-500 text-white shadow-lg shadow-blue-500/25 animate-pulse"
+                          : "bg-white border-gray-300 text-gray-400"
                     }`}
                   >
                     {isCompleted ? (
-                      <Check size={20} className="text-white" />
+                      <Check className="text-white" size={20} />
                     ) : (
                       <tab.icon size={20} />
                     )}
-                    
+
                     {/* Step Number */}
                     {!isCompleted && (
                       <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full border-2 border-gray-200 flex items-center justify-center">
@@ -64,8 +63,8 @@ export default function ProgressIndicator({
                       isCompleted
                         ? "text-green-600"
                         : isCurrent
-                        ? "text-blue-600"
-                        : "text-gray-500"
+                          ? "text-blue-600"
+                          : "text-gray-500"
                     }`}
                   >
                     {tab.title}
@@ -75,11 +74,15 @@ export default function ProgressIndicator({
                       isCompleted
                         ? "text-green-500"
                         : isCurrent
-                        ? "text-blue-500"
-                        : "text-gray-400"
+                          ? "text-blue-500"
+                          : "text-gray-400"
                     }`}
                   >
-                    {isCompleted ? "Completed" : isCurrent ? "In Progress" : "Pending"}
+                    {isCompleted
+                      ? "Completed"
+                      : isCurrent
+                        ? "In Progress"
+                        : "Pending"}
                   </div>
                 </div>
 
@@ -99,7 +102,7 @@ export default function ProgressIndicator({
             );
           })}
         </div>
-        
+
         {/* Progress Bar */}
         <div className="mt-6">
           <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
@@ -111,8 +114,12 @@ export default function ProgressIndicator({
             />
           </div>
           <div className="flex justify-between mt-2 text-xs text-gray-500">
-            <span>Step {currentTab + 1} of {tabs.length}</span>
-            <span>{Math.round(((currentTab + 1) / tabs.length) * 100)}% Complete</span>
+            <span>
+              Step {currentTab + 1} of {tabs.length}
+            </span>
+            <span>
+              {Math.round(((currentTab + 1) / tabs.length) * 100)}% Complete
+            </span>
           </div>
         </div>
       </div>

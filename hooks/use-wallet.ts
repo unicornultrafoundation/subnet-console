@@ -72,7 +72,7 @@ export const useWallet = () => {
           });
 
           balance = (parseInt(balanceHex, 16) / Math.pow(10, 18)).toFixed(4);
-        } catch (balanceError) {
+        } catch {
           // Failed to fetch balance
           balance = "0";
         }
@@ -90,7 +90,7 @@ export const useWallet = () => {
         try {
           localStorage.setItem("walletConnected", "true");
           localStorage.setItem("walletAddress", address);
-        } catch (storageError) {
+        } catch {
           // Failed to save wallet state to localStorage
         }
 
@@ -147,7 +147,7 @@ export const useWallet = () => {
     try {
       localStorage.removeItem("walletConnected");
       localStorage.removeItem("walletAddress");
-    } catch (storageError) {
+    } catch {
       // Failed to clear wallet state from localStorage
     }
   }, []);
@@ -207,7 +207,7 @@ export const useWallet = () => {
               balance = (parseInt(balanceHex, 16) / Math.pow(10, 18)).toFixed(
                 4,
               );
-            } catch (balanceError) {
+            } catch {
               // Failed to fetch balance
             }
 
@@ -222,7 +222,7 @@ export const useWallet = () => {
           } else {
             disconnectWallet();
           }
-        } catch (error) {
+        } catch {
           // Failed to verify wallet connection
           disconnectWallet();
         }

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+
 import BasicInfoStep from "./steps/BasicInfoStep";
 import ConfigurationStep from "./steps/ConfigurationStep";
 import ReviewStep from "./steps/ReviewStep";
@@ -16,21 +17,21 @@ interface DeployStepsProps {
   onDeploymentNameChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onMaxPriceChange: (value: string) => void;
-  
+
   // Configuration props
   applications: any[];
   deploymentMode: "template" | "application";
   favouriteApps: string[];
   selectedApplication: any;
   onApplicationSelect: (application: any) => void;
-  
+
   // Review props
   services: any[];
   totalCpu: string;
   totalMemory: string;
   totalStorage: string;
   estimatedPrice: string;
-  
+
   // Bidding props
   isBidAccepted: boolean;
   bids: any[];
@@ -49,10 +50,10 @@ interface DeployStepsProps {
   onCancelBidPriceEdit: () => void;
   onEstimatedPriceClick: () => void;
   onEditedBidPriceChange: (value: string) => void;
-  
+
   // Deploy props
   onDeploy: () => void;
-  
+
   // Validation
   validationErrors: string[];
 }
@@ -93,7 +94,7 @@ export default function DeploySteps({
   onEstimatedPriceClick,
   onEditedBidPriceChange,
   onDeploy,
-  validationErrors
+  validationErrors,
 }: DeployStepsProps) {
   const renderStep = () => {
     switch (currentTab) {
@@ -103,10 +104,10 @@ export default function DeploySteps({
             deploymentName={deploymentName}
             description={description}
             maxPrice={maxPrice}
+            validationErrors={validationErrors}
             onDeploymentNameChange={onDeploymentNameChange}
             onDescriptionChange={onDescriptionChange}
             onMaxPriceChange={onMaxPriceChange}
-            validationErrors={validationErrors}
           />
         );
       case 1:
@@ -116,9 +117,9 @@ export default function DeploySteps({
             deploymentMode={deploymentMode}
             favouriteApps={favouriteApps}
             selectedApplication={selectedApplication}
+            validationErrors={validationErrors}
             onApplicationSelect={onApplicationSelect}
             onMaxPriceChange={onMaxPriceChange}
-            validationErrors={validationErrors}
           />
         );
       case 2:
@@ -126,50 +127,45 @@ export default function DeploySteps({
           <ReviewStep
             deploymentName={deploymentName}
             description={description}
+            estimatedPrice={estimatedPrice}
             maxPrice={maxPrice}
             services={services}
             totalCpu={totalCpu}
             totalMemory={totalMemory}
             totalStorage={totalStorage}
-            estimatedPrice={estimatedPrice}
           />
         );
       case 3:
         return (
           <BiddingStep
-            isBidAccepted={isBidAccepted}
             bids={bids}
-            selectedBid={selectedBid}
+            editedBidPrice={editedBidPrice}
+            estimatedPrice={estimatedPrice}
+            favouriteProviders={favouriteProviders}
+            isBidAccepted={isBidAccepted}
+            isEditingBidPrice={isEditingBidPrice}
             isSubmitting={isSubmitting}
+            maxPrice={maxPrice}
+            selectedBid={selectedBid}
+            selectedRegion={selectedRegion}
+            services={services}
             totalCpu={totalCpu}
             totalMemory={totalMemory}
             totalStorage={totalStorage}
-            maxPrice={maxPrice}
-            estimatedPrice={estimatedPrice}
-            services={services}
-            selectedRegion={selectedRegion}
-            isEditingBidPrice={isEditingBidPrice}
-            editedBidPrice={editedBidPrice}
-            favouriteProviders={favouriteProviders}
             validationErrors={validationErrors}
-            onRequestBids={onRequestBids}
             onAcceptBid={onAcceptBid}
+            onCancelBidPriceEdit={onCancelBidPriceEdit}
+            onEditBidPrice={onEditBidPrice}
+            onEditedBidPriceChange={onEditedBidPriceChange}
+            onEstimatedPriceClick={onEstimatedPriceClick}
+            onRequestBids={onRequestBids}
+            onSaveBidPrice={onSaveBidPrice}
             onSelectBid={onSelectBid}
             onToggleFavouriteProvider={onToggleFavouriteProvider}
-            onEditBidPrice={onEditBidPrice}
-            onSaveBidPrice={onSaveBidPrice}
-            onCancelBidPriceEdit={onCancelBidPriceEdit}
-            onEstimatedPriceClick={onEstimatedPriceClick}
-            onEditedBidPriceChange={onEditedBidPriceChange}
           />
         );
       case 4:
-        return (
-          <DeployStep
-            isSubmitting={isSubmitting}
-            onDeploy={onDeploy}
-          />
-        );
+        return <DeployStep isSubmitting={isSubmitting} onDeploy={onDeploy} />;
       default:
         return null;
     }

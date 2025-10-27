@@ -4,7 +4,7 @@
 set -e
 
 # Get version from package.json
-VERSION=1.0.1
+VERSION=1.0.2
 
 # Define Docker image name (adjust this to match your Docker registry/repository)
 IMAGE_NAME="depinnode/subnet-console"

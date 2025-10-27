@@ -14,9 +14,8 @@ import {
   Play,
 } from "lucide-react";
 
-import WalletAuthGuard from "@/components/auth/WalletAuthGuard";
-
 // Import step components
+import WalletAuthGuard from "@/components/auth/WalletAuthGuard";
 import BasicInfoStep from "@/components/deploy/steps/BasicInfoStep";
 import ConfigurationStep from "@/components/deploy/steps/ConfigurationStep";
 import ReviewStep from "@/components/deploy/steps/ReviewStep";
@@ -98,9 +97,8 @@ function DeployPageContent() {
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [bidPrice, setBidPrice] = useState("");
   const [isEditingBid, setIsEditingBid] = useState(false);
-  const [selectedBid, _setSelectedBid] = useState<string>("");
+  const [selectedBid] = useState<string>("");
   const [bids, setBids] = useState<any[]>([]);
-  const [_selectedRegion] = useState<string>("any");
 
   // Validation errors
   const [errors, setErrors] = useState<string[]>([]);

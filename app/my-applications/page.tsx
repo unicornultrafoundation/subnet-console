@@ -5,16 +5,15 @@ import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { Chip } from "@heroui/chip";
-import { 
-  Plus, 
-  Search, 
-  Edit, 
-  Trash2, 
-  Play, 
+import {
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  Play,
   Calendar,
-  Tag,
   Server,
-  ArrowRight
+  ArrowRight,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -38,33 +37,38 @@ export default function MyApplicationsPage() {
 
   useEffect(() => {
     // Load applications from localStorage
-    const savedApps = JSON.parse(localStorage.getItem('applications') || '[]');
+    const savedApps = JSON.parse(localStorage.getItem("applications") || "[]");
+
     setApplications(savedApps);
   }, []);
 
   const categories = [
     "Web Application",
-    "API Service", 
+    "API Service",
     "Database",
     "Machine Learning",
     "Blockchain",
     "Game Server",
     "Media Processing",
-    "Other"
+    "Other",
   ];
 
-  const filteredApplications = applications.filter(app => {
-    const matchesSearch = app.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         app.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = !selectedCategory || app.category === selectedCategory;
+  const filteredApplications = applications.filter((app) => {
+    const matchesSearch =
+      app.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      app.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory =
+      !selectedCategory || app.category === selectedCategory;
+
     return matchesSearch && matchesCategory;
   });
 
   const handleDeleteApplication = (appId: string) => {
     if (confirm("Are you sure you want to delete this application?")) {
-      const updatedApps = applications.filter(app => app.id !== appId);
+      const updatedApps = applications.filter((app) => app.id !== appId);
+
       setApplications(updatedApps);
-      localStorage.setItem('applications', JSON.stringify(updatedApps));
+      localStorage.setItem("applications", JSON.stringify(updatedApps));
     }
   };
 
@@ -84,11 +88,11 @@ export default function MyApplicationsPage() {
               Manage your built applications and deploy them
             </p>
           </div>
-          
+
           <Button
             color="primary"
             startContent={<Plus size={16} />}
-            onClick={() => router.push('/applications/builder')}
+            onClick={() => router.push("/applications/builder")}
           >
             Build New Application
           </Button>
@@ -97,21 +101,23 @@ export default function MyApplicationsPage() {
         {/* Filters */}
         <div className="flex gap-4 mb-6">
           <Input
+            className="max-w-md"
             placeholder="Search applications..."
             startContent={<Search size={16} />}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-md"
           />
-          
+
           <select
+            className="px-3 py-2 border border-default-200 rounded-lg bg-background text-default-700"
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-3 py-2 border border-default-200 rounded-lg bg-background text-default-700"
           >
             <option value="">All Categories</option>
-            {categories.map(category => (
-              <option key={category} value={category}>{category}</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
             ))}
           </select>
         </div>
@@ -122,19 +128,20 @@ export default function MyApplicationsPage() {
             <CardBody className="text-center py-12">
               <Server className="mx-auto text-default-400 mb-4" size={48} />
               <h3 className="text-lg font-semibold text-default-600 mb-2">
-                {applications.length === 0 ? "No Applications Built" : "No Applications Found"}
+                {applications.length === 0
+                  ? "No Applications Built"
+                  : "No Applications Found"}
               </h3>
               <p className="text-default-500 mb-6">
-                {applications.length === 0 
+                {applications.length === 0
                   ? "Start building your first application to get started"
-                  : "Try adjusting your search or filter criteria"
-                }
+                  : "Try adjusting your search or filter criteria"}
               </p>
               {applications.length === 0 && (
                 <Button
                   color="primary"
                   startContent={<Plus size={16} />}
-                  onClick={() => router.push('/applications/builder')}
+                  onClick={() => router.push("/applications/builder")}
                 >
                   Build First Application
                 </Button>
@@ -144,7 +151,10 @@ export default function MyApplicationsPage() {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredApplications.map((app) => (
-              <Card key={app.id} className="subnet-card hover:shadow-lg transition-shadow">
+              <Card
+                key={app.id}
+                className="subnet-card hover:shadow-lg transition-shadow"
+              >
                 <CardHeader className="flex items-start justify-between">
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg mb-1">{app.name}</h3>
@@ -157,31 +167,33 @@ export default function MyApplicationsPage() {
                       isIconOnly
                       size="sm"
                       variant="light"
-                      onClick={() => router.push(`/applications/builder?edit=${app.id}`)}
+                      onClick={() =>
+                        router.push(`/applications/builder?edit=${app.id}`)
+                      }
                     >
                       <Edit size={16} />
                     </Button>
                     <Button
                       isIconOnly
+                      color="danger"
                       size="sm"
                       variant="light"
-                      color="danger"
                       onClick={() => handleDeleteApplication(app.id)}
                     >
                       <Trash2 size={16} />
                     </Button>
                   </div>
                 </CardHeader>
-                
+
                 <CardBody className="space-y-4">
                   {/* Category & Version */}
                   <div className="flex items-center justify-between text-sm">
-                    <Chip size="sm" variant="flat" color="primary">
+                    <Chip color="primary" size="sm" variant="flat">
                       {app.category || "Uncategorized"}
                     </Chip>
                     <span className="text-default-500">v{app.version}</span>
                   </div>
-                  
+
                   {/* Tags */}
                   {app.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1">
@@ -197,13 +209,16 @@ export default function MyApplicationsPage() {
                       )}
                     </div>
                   )}
-                  
+
                   {/* Services Info */}
                   <div className="flex items-center gap-2 text-sm text-default-600">
                     <Server size={14} />
-                    <span>{app.services.length} service{app.services.length !== 1 ? 's' : ''}</span>
+                    <span>
+                      {app.services.length} service
+                      {app.services.length !== 1 ? "s" : ""}
+                    </span>
                   </div>
-                  
+
                   {/* Created Date */}
                   <div className="flex items-center gap-2 text-sm text-default-500">
                     <Calendar size={14} />
@@ -211,23 +226,25 @@ export default function MyApplicationsPage() {
                       Created {new Date(app.createdAt).toLocaleDateString()}
                     </span>
                   </div>
-                  
+
                   {/* Actions */}
                   <div className="flex gap-2 pt-2">
                     <Button
+                      className="flex-1"
                       color="primary"
                       size="sm"
-                      className="flex-1"
                       startContent={<Play size={14} />}
                       onClick={() => handleDeployApplication(app.id)}
                     >
                       Deploy
                     </Button>
                     <Button
-                      variant="bordered"
-                      size="sm"
                       endContent={<ArrowRight size={14} />}
-                      onClick={() => router.push(`/applications/builder?edit=${app.id}`)}
+                      size="sm"
+                      variant="bordered"
+                      onClick={() =>
+                        router.push(`/applications/builder?edit=${app.id}`)
+                      }
                     >
                       Edit
                     </Button>

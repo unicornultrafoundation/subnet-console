@@ -7,24 +7,16 @@ import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { Chip } from "@heroui/chip";
-import { Divider } from "@heroui/divider";
-import { 
-  Plus, 
-  Trash2, 
-  Save, 
-  ArrowLeft, 
-  Settings, 
-  Code, 
-  CheckCircle,
-  Gpu,
-  Cpu,
-  MemoryStick,
-  HardDrive,
+import {
+  Plus,
+  Trash2,
+  Save,
+  ArrowLeft,
+  Settings,
+  Code,
   Server,
-  ChevronUp,
-  ChevronDown,
   Eye,
-  EyeOff
+  EyeOff,
 } from "lucide-react";
 
 // Import existing components
@@ -99,45 +91,52 @@ export default function ApplicationBuilder() {
 
   // Load application data when editing
   useEffect(() => {
-    const appId = searchParams.get('id') || searchParams.get('edit');
-    console.log('App ID from URL:', appId);
-    
+    const appId = searchParams.get("id") || searchParams.get("edit");
+
+    console.log("App ID from URL:", appId);
+
     if (appId) {
-      const savedApplications = JSON.parse(localStorage.getItem('applications') || '[]');
-      console.log('Saved applications:', savedApplications);
-      
-      const application = savedApplications.find((app: any) => app.id === appId);
-      console.log('Found application:', application);
-      
+      const savedApplications = JSON.parse(
+        localStorage.getItem("applications") || "[]",
+      );
+
+      console.log("Saved applications:", savedApplications);
+
+      const application = savedApplications.find(
+        (app: any) => app.id === appId,
+      );
+
+      console.log("Found application:", application);
+
       if (application) {
-        console.log('Setting form data:', {
+        console.log("Setting form data:", {
           name: application.name,
           description: application.description,
           category: application.category,
           tags: application.tags,
-          services: application.services
+          services: application.services,
         });
-        
+
         setApplicationName(application.name || "");
         setApplicationDescription(application.description || "");
         setApplicationCategory(application.category || "");
         setApplicationTags(application.tags || []);
         setServices(application.services || []);
       } else {
-        console.log('Application not found with ID:', appId);
+        console.log("Application not found with ID:", appId);
       }
     }
   }, [searchParams]);
 
   const categories = [
     "Web Application",
-    "API Service", 
+    "API Service",
     "Database",
     "Machine Learning",
     "Blockchain",
     "Game Server",
     "Media Processing",
-    "Other"
+    "Other",
   ];
 
   const handleAddService = () => {
@@ -148,23 +147,27 @@ export default function ApplicationBuilder() {
       command: ["nginx", "-g", "daemon off;"],
       args: [],
       env: [],
-      volumes: [{ 
-        id: `volume-${Date.now()}`,
-        name: "data-volume",
-        size: "10",
-        sizeUnit: "GB",
-        type: "ssd",
-        mount: "/data",
-        readOnly: false
-      }],
-      expose: [{ 
-        id: `port-${Date.now()}`,
-        port: 80, 
-        as: 80, 
-        protocol: "http",
-        acceptDomains: [],
-        toServices: []
-      }],
+      volumes: [
+        {
+          id: `volume-${Date.now()}`,
+          name: "data-volume",
+          size: "10",
+          sizeUnit: "GB",
+          type: "ssd",
+          mount: "/data",
+          readOnly: false,
+        },
+      ],
+      expose: [
+        {
+          id: `port-${Date.now()}`,
+          port: 80,
+          as: 80,
+          protocol: "http",
+          acceptDomains: [],
+          toServices: [],
+        },
+      ],
       resources: {
         cpu: { units: "1" },
         memory: { size: "1Gi" },
@@ -181,11 +184,12 @@ export default function ApplicationBuilder() {
   };
 
   const handleRemoveService = (serviceId: string) => {
-    setServices(services.filter(s => s.id !== serviceId));
+    setServices(services.filter((s) => s.id !== serviceId));
   };
 
   const toggleServiceVisibility = (serviceId: string) => {
     const newHiddenServices = new Set(hiddenServices);
+
     if (newHiddenServices.has(serviceId)) {
       newHiddenServices.delete(serviceId);
     } else {
@@ -194,63 +198,81 @@ export default function ApplicationBuilder() {
     setHiddenServices(newHiddenServices);
   };
 
-  const handleUpdateService = (serviceId: string, field: string, value: any) => {
-    setServices(services.map(s => {
-      if (s.id === serviceId) {
-        if (field === "cpu") {
-          return { ...s, resources: { ...s.resources, cpu: { units: value } } };
-        } else if (field === "memory") {
-          return { ...s, resources: { ...s.resources, memory: { size: value } } };
-        } else if (field === "storage") {
-          return { ...s, resources: { ...s.resources, storage: [{ size: value }] } };
-        } else if (field === "gpu_units") {
-          return { 
-            ...s, 
-            resources: { 
-              ...s.resources, 
-              gpu: { 
-                ...s.resources.gpu, 
-                units: value,
-                configs: s.resources.gpu?.configs || []
-              } 
-            }
-          };
-        } else if (field === "gpu_configs") {
-          return { 
-            ...s, 
-            resources: { 
-              ...s.resources, 
-              gpu: { 
-                ...s.resources.gpu, 
-                configs: value
-              } 
-            }
-          };
-        } else {
-          return { ...s, [field]: value };
+  const handleUpdateService = (
+    serviceId: string,
+    field: string,
+    value: any,
+  ) => {
+    setServices(
+      services.map((s) => {
+        if (s.id === serviceId) {
+          if (field === "cpu") {
+            return {
+              ...s,
+              resources: { ...s.resources, cpu: { units: value } },
+            };
+          } else if (field === "memory") {
+            return {
+              ...s,
+              resources: { ...s.resources, memory: { size: value } },
+            };
+          } else if (field === "storage") {
+            return {
+              ...s,
+              resources: { ...s.resources, storage: [{ size: value }] },
+            };
+          } else if (field === "gpu_units") {
+            return {
+              ...s,
+              resources: {
+                ...s.resources,
+                gpu: {
+                  ...s.resources.gpu,
+                  units: value,
+                  configs: s.resources.gpu?.configs || [],
+                },
+              },
+            };
+          } else if (field === "gpu_configs") {
+            return {
+              ...s,
+              resources: {
+                ...s.resources,
+                gpu: {
+                  ...s.resources.gpu,
+                  configs: value,
+                },
+              },
+            };
+          } else {
+            return { ...s, [field]: value };
+          }
         }
-      }
-      return s;
-    }));
+
+        return s;
+      }),
+    );
   };
 
   const handleSaveApplication = async () => {
     if (!applicationName.trim()) {
       alert("Application name is required");
+
       return;
     }
 
     if (services.length === 0) {
       alert("At least one service is required");
+
       return;
     }
 
     setIsSaving(true);
 
     try {
-      const appId = searchParams.get('id') || searchParams.get('edit');
+      const appId = searchParams.get("id") || searchParams.get("edit");
       const isEditing = !!appId;
-      
+
       const application: Application = {
         id: isEditing ? appId : `app-${Date.now()}`,
         name: applicationName,
@@ -259,31 +281,34 @@ export default function ApplicationBuilder() {
         category: applicationCategory,
         tags: applicationTags,
         services: services,
-        createdAt: isEditing ? 
-          JSON.parse(localStorage.getItem('applications') || '[]')
-            .find((app: any) => app.id === appId)?.createdAt || new Date().toISOString() :
-          new Date().toISOString(),
+        createdAt: isEditing
+          ? JSON.parse(localStorage.getItem("applications") || "[]").find(
+              (app: any) => app.id === appId,
+            )?.createdAt || new Date().toISOString()
+          : new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
       // Save to localStorage for now (in real app, this would be API call)
-      const existingApps = JSON.parse(localStorage.getItem('applications') || '[]');
-      
+      const existingApps = JSON.parse(
+        localStorage.getItem("applications") || "[]",
+      );
+
       if (isEditing) {
         // Update existing application
-        const updatedApps = existingApps.map((app: any) => 
-          app.id === appId ? application : app
+        const updatedApps = existingApps.map((app: any) =>
+          app.id === appId ? application : app,
         );
-        localStorage.setItem('applications', JSON.stringify(updatedApps));
+
+        localStorage.setItem("applications", JSON.stringify(updatedApps));
       } else {
         // Create new application
         existingApps.push(application);
-        localStorage.setItem('applications', JSON.stringify(existingApps));
+        localStorage.setItem("applications", JSON.stringify(existingApps));
       }
 
       // Redirect to deploy page with the new application selected
       router.push(`/deploy?app=${application.id}&mode=application`);
-      
     } catch (error) {
       console.error("Error saving application:", error);
       alert("Error saving application");
@@ -307,28 +332,32 @@ export default function ApplicationBuilder() {
             </Button>
             <div>
               <h1 className="text-3xl font-bold">
-                {(searchParams.get('id') || searchParams.get('edit')) ? 'Edit Application' : 'Application Builder'}
+                {searchParams.get("id") || searchParams.get("edit")
+                  ? "Edit Application"
+                  : "Application Builder"}
               </h1>
               <p className="text-default-600 mt-1">
                 Build and configure your application for deployment
               </p>
             </div>
           </div>
-          
+
           <div className="flex gap-3">
             <Button
               variant="bordered"
-              onClick={() => router.push('/my-applications')}
+              onClick={() => router.push("/my-applications")}
             >
               Back to My Applications
             </Button>
             <Button
               color="primary"
+              isLoading={isSaving}
               startContent={<Save size={16} />}
               onClick={handleSaveApplication}
-              isLoading={isSaving}
             >
-              {searchParams.get('id') || searchParams.get('edit') ? 'Update & Deploy' : 'Save & Deploy'}
+              {searchParams.get("id") || searchParams.get("edit")
+                ? "Update & Deploy"
+                : "Save & Deploy"}
             </Button>
           </div>
         </div>
@@ -349,37 +378,44 @@ export default function ApplicationBuilder() {
                       <span className="text-primary text-xs font-bold">i</span>
                     </div>
                     <div className="text-sm">
-                      <p className="font-medium text-primary mb-1">Next Steps</p>
+                      <p className="font-medium text-primary mb-1">
+                        Next Steps
+                      </p>
                       <p className="text-default-600">
-                        After saving, you'll be redirected to the deploy page where you can choose deployment settings and request bids from providers.
+                        After saving, you'll be redirected to the deploy page
+                        where you can choose deployment settings and request
+                        bids from providers.
                       </p>
                     </div>
                   </div>
                 </div>
-                
+
                 <Input
+                  isRequired
                   label="Application Name"
                   placeholder="Enter application name"
                   value={applicationName}
                   onChange={(e) => setApplicationName(e.target.value)}
-                  isRequired
                 />
-                
+
                 <Input
+                  multiline
                   label="Description"
+                  minRows={3}
                   placeholder="Describe your application"
                   value={applicationDescription}
                   onChange={(e) => setApplicationDescription(e.target.value)}
-                  multiline
-                  minRows={3}
                 />
-                
+
                 <Select
                   label="Category"
                   placeholder="Select category"
-                  selectedKeys={applicationCategory ? [applicationCategory] : []}
+                  selectedKeys={
+                    applicationCategory ? [applicationCategory] : []
+                  }
                   onSelectionChange={(keys) => {
                     const selected = Array.from(keys)[0] as string;
+
                     setApplicationCategory(selected);
                   }}
                 >
@@ -389,7 +425,7 @@ export default function ApplicationBuilder() {
                     </SelectItem>
                   ))}
                 </Select>
-                
+
                 <div>
                   <label className="text-sm font-medium text-default-700 mb-2 block">
                     Tags
@@ -398,19 +434,24 @@ export default function ApplicationBuilder() {
                     {applicationTags.map((tag, index) => (
                       <Chip
                         key={index}
-                        onClose={() => setApplicationTags(applicationTags.filter((_, i) => i !== index))}
-                        variant="flat"
                         color="primary"
+                        variant="flat"
+                        onClose={() =>
+                          setApplicationTags(
+                            applicationTags.filter((_, i) => i !== index),
+                          )
+                        }
                       >
                         {tag}
                       </Chip>
                     ))}
                     <Button
                       size="sm"
-                      variant="bordered"
                       startContent={<Plus size={14} />}
+                      variant="bordered"
                       onClick={() => {
                         const tag = prompt("Enter tag:");
+
                         if (tag && tag.trim()) {
                           setApplicationTags([...applicationTags, tag.trim()]);
                         }
@@ -430,13 +471,18 @@ export default function ApplicationBuilder() {
               <CardHeader className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Code className="text-primary" size={20} />
-                  <h3 className="text-lg font-semibold">Services Configuration</h3>
+                  <h3 className="text-lg font-semibold">
+                    Services Configuration
+                  </h3>
                 </div>
               </CardHeader>
               <CardBody>
                 {services.length === 0 ? (
                   <div className="text-center py-12">
-                    <Server className="mx-auto text-default-400 mb-4" size={48} />
+                    <Server
+                      className="mx-auto text-default-400 mb-4"
+                      size={48}
+                    />
                     <h4 className="text-lg font-semibold text-default-600 mb-2">
                       No Services Added
                     </h4>
@@ -454,7 +500,10 @@ export default function ApplicationBuilder() {
                 ) : (
                   <div className="space-y-4">
                     {services.map((service, index) => (
-                      <Card key={service.id} className="border border-default-200">
+                      <Card
+                        key={service.id}
+                        className="border border-default-200"
+                      >
                         <CardHeader className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
@@ -464,24 +513,36 @@ export default function ApplicationBuilder() {
                             </div>
                             <div>
                               <h4 className="font-semibold">{service.name}</h4>
-                              <p className="text-sm text-default-500">{service.image}</p>
+                              <p className="text-sm text-default-500">
+                                {service.image}
+                              </p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
                             <Button
                               isIconOnly
+                              color={
+                                hiddenServices.has(service.id)
+                                  ? "default"
+                                  : "primary"
+                              }
                               size="sm"
                               variant="light"
-                              color={hiddenServices.has(service.id) ? "default" : "primary"}
-                              onClick={() => toggleServiceVisibility(service.id)}
+                              onClick={() =>
+                                toggleServiceVisibility(service.id)
+                              }
                             >
-                              {hiddenServices.has(service.id) ? <EyeOff size={16} /> : <Eye size={16} />}
+                              {hiddenServices.has(service.id) ? (
+                                <EyeOff size={16} />
+                              ) : (
+                                <Eye size={16} />
+                              )}
                             </Button>
                             <Button
                               isIconOnly
+                              color="danger"
                               size="sm"
                               variant="light"
-                              color="danger"
                               onClick={() => handleRemoveService(service.id)}
                             >
                               <Trash2 size={16} />
@@ -491,15 +552,14 @@ export default function ApplicationBuilder() {
                         {!hiddenServices.has(service.id) && (
                           <CardBody>
                             <BuilderConfiguration
+                              availableServices={services
+                                .filter((s) => s.id !== service.id)
+                                .map((s) => s.name)
+                                .filter((name) => name.trim() !== "")}
                               service={service}
                               onUpdateService={(field, value) => {
                                 handleUpdateService(service.id, field, value);
                               }}
-                              availableServices={services
-                                .filter(s => s.id !== service.id)
-                                .map(s => s.name)
-                                .filter(name => name.trim() !== "")
-                              }
                             />
                           </CardBody>
                         )}
@@ -507,14 +567,14 @@ export default function ApplicationBuilder() {
                     ))}
                   </div>
                 )}
-                
+
                 {/* Add Service Button */}
                 <div className="flex justify-center pt-4 border-t border-default-200 mt-6">
                   <Button
                     color="primary"
+                    size="lg"
                     startContent={<Plus size={16} />}
                     onClick={handleAddService}
-                    size="lg"
                   >
                     Add Service
                   </Button>
