@@ -382,9 +382,9 @@ export default function ApplicationBuilder() {
                         Next Steps
                       </p>
                       <p className="text-default-600">
-                        After saving, you'll be redirected to the deploy page
-                        where you can choose deployment settings and request
-                        bids from providers.
+                        After saving, you&apos;ll be redirected to the deploy
+                        page where you can choose deployment settings and
+                        request bids from providers.
                       </p>
                     </div>
                   </div>
@@ -398,14 +398,17 @@ export default function ApplicationBuilder() {
                   onChange={(e) => setApplicationName(e.target.value)}
                 />
 
-                <Input
-                  multiline
-                  label="Description"
-                  minRows={3}
-                  placeholder="Describe your application"
-                  value={applicationDescription}
-                  onChange={(e) => setApplicationDescription(e.target.value)}
-                />
+                <div>
+                  <span className="text-sm font-medium text-default-700 mb-2 block">
+                    Description
+                  </span>
+                  <textarea
+                    className="w-full min-h-[80px] px-3 py-2 rounded-lg border border-default-200 focus:border-primary focus:outline-none resize-none"
+                    placeholder="Describe your application"
+                    value={applicationDescription}
+                    onChange={(e) => setApplicationDescription(e.target.value)}
+                  />
+                </div>
 
                 <Select
                   label="Category"
@@ -420,16 +423,16 @@ export default function ApplicationBuilder() {
                   }}
                 >
                   {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
+                    <SelectItem key={category}>
                       {category}
                     </SelectItem>
                   ))}
                 </Select>
 
                 <div>
-                  <label className="text-sm font-medium text-default-700 mb-2 block">
+                  <span className="text-sm font-medium text-default-700 mb-2 block">
                     Tags
-                  </label>
+                  </span>
                   <div className="flex flex-wrap gap-2">
                     {applicationTags.map((tag, index) => (
                       <Chip

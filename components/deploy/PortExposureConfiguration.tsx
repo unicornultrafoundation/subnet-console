@@ -177,9 +177,9 @@ export default function PortExposureConfiguration({
 
               {/* Accept Domains */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-default-700">
+                <span className="text-sm font-medium text-default-700 block mb-1">
                   Accept Domains
-                </label>
+                </span>
                 <div className="flex items-center gap-2">
                   <Input
                     className="flex-1"

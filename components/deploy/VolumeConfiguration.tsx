@@ -108,9 +108,9 @@ export default function VolumeConfiguration({
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm text-default-600 mb-1 block">
+                  <span className="text-sm text-default-600 mb-1 block">
                     Volume Name
-                  </label>
+                  </span>
                   <Input
                     placeholder="my-volume"
                     size="sm"
@@ -121,9 +121,9 @@ export default function VolumeConfiguration({
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-default-600 mb-1 block">
+                  <span className="text-sm text-default-600 mb-1 block">
                     Type
-                  </label>
+                  </span>
                   <Select
                     aria-label="Select volume type"
                     selectedKeys={[
@@ -148,9 +148,9 @@ export default function VolumeConfiguration({
 
               <div className="flex items-end gap-2">
                 <div className="flex-1">
-                  <label className="text-sm text-default-600 mb-1 block">
+                  <span className="text-sm text-default-600 mb-1 block">
                     Size
-                  </label>
+                  </span>
                   <Input
                     placeholder="1"
                     size="sm"
@@ -164,9 +164,9 @@ export default function VolumeConfiguration({
                   />
                 </div>
                 <div className="w-24">
-                  <label className="text-sm text-default-600 mb-1 block">
+                  <span className="text-sm text-default-600 mb-1 block">
                     Unit
-                  </label>
+                  </span>
                   <Select
                     aria-label="Select volume size unit"
                     selectedKeys={[volume.size.replace(/[\d.]/g, "") || "GB"]}
@@ -186,9 +186,9 @@ export default function VolumeConfiguration({
               </div>
 
               <div>
-                <label className="text-sm text-default-600 mb-1 block">
+                <span className="text-sm text-default-600 mb-1 block">
                   Mount Path
-                </label>
+                </span>
                 <Input
                   placeholder="/data"
                   size="sm"

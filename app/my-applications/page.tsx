@@ -8,12 +8,10 @@ import { Chip } from "@heroui/chip";
 import {
   Plus,
   Search,
-  Edit,
   Trash2,
   Play,
   Calendar,
   Server,
-  ArrowRight,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 

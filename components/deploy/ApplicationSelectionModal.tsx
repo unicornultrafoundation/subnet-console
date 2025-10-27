@@ -184,9 +184,16 @@ export default function ApplicationSelectionModal({
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          console.log("Card wrapper clicked for app:", app);
           handleSelectApplication(app);
         }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleSelectApplication(app);
+          }
+        }}
+        role="button"
+        tabIndex={0}
       >
         <Card
           className={`transition-all hover:shadow-lg ${
@@ -414,3 +421,4 @@ export default function ApplicationSelectionModal({
     </Modal>
   );
 }
+

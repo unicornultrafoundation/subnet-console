@@ -225,6 +225,13 @@ export default function DeploymentSummary({
               onClick={() =>
                 onMaxPriceChange?.(priceEstimate.hourly.toFixed(2))
               }
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  onMaxPriceChange?.(priceEstimate.hourly.toFixed(2));
+                }
+              }}
+              role="button"
+              tabIndex={0}
             >
               <span className="font-medium text-success">Hourly:</span>
               <span className="font-semibold text-success">

@@ -85,7 +85,7 @@ export default function ServiceEnvironment({
               </div>
               <p className="text-sm">No environment variables configured</p>
               <p className="text-xs text-default-400 mt-1">
-                Click "Add Variable" to get started
+                Click &quot;Add Variable&quot; to get started
               </p>
             </div>
           ) : (
@@ -96,9 +96,9 @@ export default function ServiceEnvironment({
                   className="flex items-center gap-2 p-3 bg-default-50 rounded-lg border border-default-200"
                 >
                   <div className="flex-1">
-                    <label className="text-sm text-default-600 mb-1 block">
+                    <span className="text-sm text-default-600 mb-1 block">
                       Key
-                    </label>
+                    </span>
                     <Input
                       placeholder="DATABASE_URL"
                       size="sm"
@@ -109,9 +109,9 @@ export default function ServiceEnvironment({
                     />
                   </div>
                   <div className="flex-1">
-                    <label className="text-sm text-default-600 mb-1 block">
+                    <span className="text-sm text-default-600 mb-1 block">
                       Value
-                    </label>
+                    </span>
                     <Input
                       placeholder="postgresql://user:pass@localhost:5432/db"
                       size="sm"

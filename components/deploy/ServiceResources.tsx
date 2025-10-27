@@ -213,7 +213,6 @@ export default function ServiceResources({
                 onChange={(e) => {
                   const checked = e.target.checked;
 
-                  console.log("GPU checkbox onChange:", checked);
                   setUseGpu(checked);
                   if (!checked) {
                     // Reset GPU units to 0 when unchecked
@@ -233,7 +232,6 @@ export default function ServiceResources({
                 onClick={() => {
                   const newChecked = !useGpu;
 
-                  console.log("GPU div onClick:", newChecked);
                   setUseGpu(newChecked);
                   if (!newChecked) {
                     // Reset GPU units to 0 when unchecked
@@ -243,6 +241,19 @@ export default function ServiceResources({
                     onUpdateService("gpu_units", "1");
                   }
                 }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const newChecked = !useGpu;
+                    setUseGpu(newChecked);
+                    if (!newChecked) {
+                      onUpdateService("gpu_units", "0");
+                    } else {
+                      onUpdateService("gpu_units", "1");
+                    }
+                  }
+                }}
+                role="button"
+                tabIndex={0}
               >
                 {useGpu && (
                   <svg
@@ -261,7 +272,7 @@ export default function ServiceResources({
             </div>
             <div className="flex items-center gap-2">
               <Gpu className="text-primary" size={16} />
-              <label
+              <span
                 className="text-sm font-medium text-default-700 cursor-pointer select-none"
                 onClick={() => {
                   const newChecked = !useGpu;
@@ -275,23 +286,27 @@ export default function ServiceResources({
                     onUpdateService("gpu_units", "1");
                   }
                 }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const newChecked = !useGpu;
+                    setUseGpu(newChecked);
+                    if (!newChecked) {
+                      onUpdateService("gpu_units", "0");
+                    } else {
+                      onUpdateService("gpu_units", "1");
+                    }
+                  }
+                }}
+                role="button"
+                tabIndex={0}
               >
                 Use GPU
-              </label>
+              </span>
             </div>
           </div>
 
           {(() => {
             const gpuUnits = parseInt(service.resources.gpu?.units || "0");
-
-            console.log(
-              "GPU units:",
-              gpuUnits,
-              "useGpu:",
-              useGpu,
-              "service.resources.gpu:",
-              service.resources.gpu,
-            );
 
             return (
               gpuUnits > 0 && (
