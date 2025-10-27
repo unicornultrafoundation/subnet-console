@@ -2,10 +2,18 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
-import { Chip } from "@heroui/chip";
-import { ArrowLeft, ArrowRight, CheckCircle, User, Settings, Eye, DollarSign, Play } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle,
+  User,
+  Settings,
+  Eye,
+  DollarSign,
+  Play,
+} from "lucide-react";
+
 import WalletAuthGuard from "@/components/auth/WalletAuthGuard";
 
 // Import step components
@@ -46,7 +54,12 @@ interface Application {
 
 const STEPS = [
   { id: 0, title: "Basic Info", description: "Deployment details", icon: User },
-  { id: 1, title: "Configuration", description: "Service configuration", icon: Settings },
+  {
+    id: 1,
+    title: "Configuration",
+    description: "Service configuration",
+    icon: Settings,
+  },
   { id: 2, title: "Review", description: "Review settings", icon: Eye },
   { id: 3, title: "Bidding", description: "Request bids", icon: DollarSign },
   { id: 4, title: "Deploy", description: "Deploy application", icon: Play },
@@ -55,53 +68,56 @@ const STEPS = [
 function DeployPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   // State management
   const [currentStep, setCurrentStep] = useState(0);
-  const [hasChosenMethod, setHasChosenMethod] = useState(false);
-  
+  const [_hasChosenMethod, setHasChosenMethod] = useState(false);
+
   // Basic info state
   const [deploymentName, setDeploymentName] = useState("");
   const [description, setDescription] = useState("");
   const [maxPrice, setMaxPrice] = useState("10");
-  
+
   // Application state
   const [applications, setApplications] = useState<Application[]>([]);
-  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+  const [selectedApplication, setSelectedApplication] =
+    useState<Application | null>(null);
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
-  
+
   // Services state
   const [services, setServices] = useState<Service[]>([]);
-  
+
   // Resource totals
   const [totalCpu, setTotalCpu] = useState(0);
   const [totalMemory, setTotalMemory] = useState(0);
   const [totalStorage, setTotalStorage] = useState(0);
   const [estimatedPrice, setEstimatedPrice] = useState(0);
-  
+
   // Bidding state
   const [isBidAccepted, setIsBidAccepted] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [bidPrice, setBidPrice] = useState("");
   const [isEditingBid, setIsEditingBid] = useState(false);
-  const [selectedBid, setSelectedBid] = useState<string>("");
+  const [selectedBid, _setSelectedBid] = useState<string>("");
   const [bids, setBids] = useState<any[]>([]);
-  const [selectedRegion, setSelectedRegion] = useState<string>("any");
-  
+  const [_selectedRegion] = useState<string>("any");
+
   // Validation errors
   const [errors, setErrors] = useState<string[]>([]);
 
   // Load applications on mount
   useEffect(() => {
-    const savedApps = JSON.parse(localStorage.getItem('applications') || '[]');
+    const savedApps = JSON.parse(localStorage.getItem("applications") || "[]");
+
     setApplications(savedApps);
-    
+
     // Check URL parameters for app selection
-    const appId = searchParams.get('app');
-    const mode = searchParams.get('mode');
-    
-    if (appId && mode === 'application') {
+    const appId = searchParams.get("app");
+    const mode = searchParams.get("mode");
+
+    if (appId && mode === "application") {
       const app = savedApps.find((a: Application) => a.id === appId);
+
       if (app) {
         setSelectedApplication(app);
         setServices(app.services || []);
@@ -125,20 +141,36 @@ function DeployPageContent() {
           capacity: "87%",
           responseTime: "< 5min",
           successRate: "99.2%",
-          features: ["High Performance", "24/7 Support", "Auto Scaling", "Backup", "DDoS Protection"],
+          features: [
+            "High Performance",
+            "24/7 Support",
+            "Auto Scaling",
+            "Backup",
+            "DDoS Protection",
+          ],
           availableResources: {
             cpu: 128,
             memory: 512,
             storage: 10,
-            gpu: 8
+            gpu: 8,
           },
           cpuUtilization: "45%",
           memoryUtilization: "62%",
           storageUtilization: "38%",
           gpuUtilization: "23%",
           gpuModels: ["RTX 4090", "RTX 4080", "RTX 4070", "Tesla V100"],
-          gpuMemory: ["24GB GDDR6X", "16GB GDDR6X", "12GB GDDR6X", "32GB HBM2e"],
-          gpuInterface: ["PCIe 4.0 x16", "PCIe 3.0 x16", "NVLink", "Infinity Fabric"]
+          gpuMemory: [
+            "24GB GDDR6X",
+            "16GB GDDR6X",
+            "12GB GDDR6X",
+            "32GB HBM2e",
+          ],
+          gpuInterface: [
+            "PCIe 4.0 x16",
+            "PCIe 3.0 x16",
+            "NVLink",
+            "Infinity Fabric",
+          ],
         },
         price: "25.50",
         specs: {
@@ -148,7 +180,7 @@ function DeployPageContent() {
         },
       },
       {
-        id: "bid-2", 
+        id: "bid-2",
         provider: {
           id: "provider-2",
           name: "Provider Beta",
@@ -159,12 +191,17 @@ function DeployPageContent() {
           capacity: "92%",
           responseTime: "< 3min",
           successRate: "98.8%",
-          features: ["Cost Effective", "Fast Deployment", "Monitoring", "SSL Certificate"],
+          features: [
+            "Cost Effective",
+            "Fast Deployment",
+            "Monitoring",
+            "SSL Certificate",
+          ],
           availableResources: {
             cpu: 96,
             memory: 384,
             storage: 8,
-            gpu: 4
+            gpu: 4,
           },
           cpuUtilization: "58%",
           memoryUtilization: "71%",
@@ -172,7 +209,7 @@ function DeployPageContent() {
           gpuUtilization: "35%",
           gpuModels: ["RTX 4080", "RTX 4070", "RTX 4060"],
           gpuMemory: ["16GB GDDR6X", "12GB GDDR6X", "8GB GDDR6"],
-          gpuInterface: ["PCIe 4.0 x16", "PCIe 3.0 x16"]
+          gpuInterface: ["PCIe 4.0 x16", "PCIe 3.0 x16"],
         },
         price: "22.75",
         specs: {
@@ -184,7 +221,7 @@ function DeployPageContent() {
       {
         id: "bid-3",
         provider: {
-          id: "provider-3", 
+          id: "provider-3",
           name: "Provider Gamma",
           region: "asia-pacific",
           rating: 4.9,
@@ -193,20 +230,44 @@ function DeployPageContent() {
           capacity: "78%",
           responseTime: "< 2min",
           successRate: "99.5%",
-          features: ["Enterprise Grade", "Global CDN", "DDoS Protection", "SSL Certificate", "Load Balancing"],
+          features: [
+            "Enterprise Grade",
+            "Global CDN",
+            "DDoS Protection",
+            "SSL Certificate",
+            "Load Balancing",
+          ],
           availableResources: {
             cpu: 256,
             memory: 1024,
             storage: 20,
-            gpu: 16
+            gpu: 16,
           },
           cpuUtilization: "32%",
           memoryUtilization: "48%",
           storageUtilization: "25%",
           gpuUtilization: "15%",
-          gpuModels: ["RTX 4090", "RTX 4080", "RTX 4070", "Tesla V100", "Tesla A100"],
-          gpuMemory: ["24GB GDDR6X", "16GB GDDR6X", "12GB GDDR6X", "32GB HBM2e", "80GB HBM2e"],
-          gpuInterface: ["PCIe 4.0 x16", "PCIe 3.0 x16", "NVLink", "Infinity Fabric", "NVSwitch"]
+          gpuModels: [
+            "RTX 4090",
+            "RTX 4080",
+            "RTX 4070",
+            "Tesla V100",
+            "Tesla A100",
+          ],
+          gpuMemory: [
+            "24GB GDDR6X",
+            "16GB GDDR6X",
+            "12GB GDDR6X",
+            "32GB HBM2e",
+            "80GB HBM2e",
+          ],
+          gpuInterface: [
+            "PCIe 4.0 x16",
+            "PCIe 3.0 x16",
+            "NVLink",
+            "Infinity Fabric",
+            "NVSwitch",
+          ],
         },
         price: "28.00",
         specs: {
@@ -216,6 +277,7 @@ function DeployPageContent() {
         },
       },
     ];
+
     setBids(mockBids);
   }, [totalCpu, totalMemory, totalStorage]);
 
@@ -224,41 +286,58 @@ function DeployPageContent() {
     const totals = services.reduce(
       (acc, service) => {
         const cpu = parseInt((service.resources.cpu as any)?.units || "0");
-        
+
         // Handle memory - usually {size: "1Gi"} format
         let memory = 0;
+
         if ((service.resources.memory as any)?.size) {
-          memory = parseFloat((service.resources.memory as any).size.replace(/[^\d.]/g, "") || "0");
+          memory = parseFloat(
+            (service.resources.memory as any).size.replace(/[^\d.]/g, "") ||
+              "0",
+          );
         } else if ((service.resources.memory as any)?.units) {
           memory = parseInt((service.resources.memory as any).units || "0");
         }
-        
+
         // Handle storage - usually an array with {size: "1Gi"} format
         let storage = 0;
-        if (Array.isArray(service.resources.storage) && service.resources.storage.length > 0) {
-          storage = parseFloat((service.resources.storage[0] as any)?.size?.replace(/[^\d.]/g, "") || "0");
+
+        if (
+          Array.isArray(service.resources.storage) &&
+          service.resources.storage.length > 0
+        ) {
+          storage = parseFloat(
+            (service.resources.storage[0] as any)?.size?.replace(
+              /[^\d.]/g,
+              "",
+            ) || "0",
+          );
         } else if ((service.resources.storage as any)?.size) {
-          storage = parseFloat((service.resources.storage as any).size.replace(/[^\d.]/g, "") || "0");
+          storage = parseFloat(
+            (service.resources.storage as any).size.replace(/[^\d.]/g, "") ||
+              "0",
+          );
         } else if ((service.resources.storage as any)?.units) {
           storage = parseInt((service.resources.storage as any).units || "0");
         }
-        
+
         return {
           cpu: acc.cpu + cpu * (service.replicas || 1),
           memory: acc.memory + memory * (service.replicas || 1),
           storage: acc.storage + storage * (service.replicas || 1),
         };
       },
-      { cpu: 0, memory: 0, storage: 0 }
+      { cpu: 0, memory: 0, storage: 0 },
     );
-    
-    console.log("Final totals:", totals);
+
     setTotalCpu(totals.cpu);
     setTotalMemory(totals.memory);
     setTotalStorage(totals.storage);
-    
+
     // Calculate estimated price (simplified)
-    const totalEstimatedPrice = (totals.cpu * 0.1 + totals.memory * 0.05 + totals.storage * 0.02) * 24;
+    const totalEstimatedPrice =
+      (totals.cpu * 0.1 + totals.memory * 0.05 + totals.storage * 0.02) * 24;
+
     setEstimatedPrice(parseFloat(totalEstimatedPrice.toFixed(2)));
   }, [services]);
 
@@ -267,155 +346,199 @@ function DeployPageContent() {
     // Validate Basic Info step
     if (currentStep === 0) {
       const validationErrors: string[] = [];
-      
+
       if (!deploymentName.trim()) {
         validationErrors.push("Deployment name is required");
       }
-      
+
       if (!maxPrice.trim()) {
         validationErrors.push("Max price is required");
       } else {
         const price = parseFloat(maxPrice);
+
         if (isNaN(price) || price <= 0) {
           validationErrors.push("Max price must be a valid positive number");
         }
       }
-      
+
       if (validationErrors.length > 0) {
         setErrors(validationErrors);
+
         return; // Don't proceed if there are validation errors
       }
-      
+
       // Clear errors if validation passes
       setErrors([]);
     }
-    
+
     // Validate Configuration step
     if (currentStep === 1) {
       const validationErrors: string[] = [];
-      
+
       // Check if at least one service exists
       if (services.length === 0) {
         validationErrors.push("At least one service is required");
         setErrors(validationErrors);
+
         return;
       }
-      
+
       // Validate each service
       services.forEach((service, index) => {
         const serviceNum = index + 1;
-        
+
         // Service name - Required
         if (!service.name || !service.name.trim()) {
-          validationErrors.push(`Service ${serviceNum}: Service name is required`);
+          validationErrors.push(
+            `Service ${serviceNum}: Service name is required`,
+          );
         }
-        
+
         // Docker image - Required
         if (!service.image || !service.image.trim()) {
-          validationErrors.push(`Service ${serviceNum}: Docker image is required`);
+          validationErrors.push(
+            `Service ${serviceNum}: Docker image is required`,
+          );
         }
-        
+
         // CPU resources - Required
         const cpuUnits = parseFloat(service.resources.cpu.units || "0");
+
         if (!service.resources.cpu.units || cpuUnits <= 0) {
-          validationErrors.push(`Service ${serviceNum}: CPU units must be greater than 0`);
+          validationErrors.push(
+            `Service ${serviceNum}: CPU units must be greater than 0`,
+          );
         }
-        
+
         // Memory resources - Required
         let memorySize = 0;
+
         if ((service.resources.memory as any).size) {
-          memorySize = parseFloat((service.resources.memory as any).size.replace(/[^\d.]/g, "") || "0");
+          memorySize = parseFloat(
+            (service.resources.memory as any).size.replace(/[^\d.]/g, "") ||
+              "0",
+          );
         } else if (service.resources.memory.units) {
           memorySize = parseFloat(service.resources.memory.units || "0");
         }
-        
+
         if (memorySize <= 0) {
-          validationErrors.push(`Service ${serviceNum}: Memory size must be greater than 0`);
+          validationErrors.push(
+            `Service ${serviceNum}: Memory size must be greater than 0`,
+          );
         }
-        
+
         // Storage resources - Optional but validate if present
         let storageValid = true;
-        if (Array.isArray(service.resources.storage) && service.resources.storage.length > 0) {
-          const storageSize = parseFloat((service.resources.storage[0] as any).size.replace(/[^\d.]/g, "") || "0");
+
+        if (
+          Array.isArray(service.resources.storage) &&
+          service.resources.storage.length > 0
+        ) {
+          const storageSize = parseFloat(
+            (service.resources.storage[0] as any).size.replace(/[^\d.]/g, "") ||
+              "0",
+          );
+
           storageValid = storageSize > 0;
         } else if ((service.resources.storage as any).size) {
-          const storageSize = parseFloat((service.resources.storage as any).size.replace(/[^\d.]/g, "") || "0");
+          const storageSize = parseFloat(
+            (service.resources.storage as any).size.replace(/[^\d.]/g, "") ||
+              "0",
+          );
+
           storageValid = storageSize > 0;
         }
-        
+
         if (!storageValid) {
-          validationErrors.push(`Service ${serviceNum}: Storage size must be greater than 0`);
+          validationErrors.push(
+            `Service ${serviceNum}: Storage size must be greater than 0`,
+          );
         }
-        
+
         // Volumes validation
         if (service.volumes && service.volumes.length > 0) {
           service.volumes.forEach((volume, volIndex) => {
             if (!volume.name.trim()) {
-              validationErrors.push(`Service ${serviceNum}, Volume ${volIndex + 1}: Name is required`);
+              validationErrors.push(
+                `Service ${serviceNum}, Volume ${volIndex + 1}: Name is required`,
+              );
             }
             if (!volume.mount.trim()) {
-              validationErrors.push(`Service ${serviceNum}, Volume ${volIndex + 1}: Mount path is required`);
+              validationErrors.push(
+                `Service ${serviceNum}, Volume ${volIndex + 1}: Mount path is required`,
+              );
             }
             if (!volume.size || parseFloat(volume.size) <= 0) {
-              validationErrors.push(`Service ${serviceNum}, Volume ${volIndex + 1}: Size must be greater than 0`);
+              validationErrors.push(
+                `Service ${serviceNum}, Volume ${volIndex + 1}: Size must be greater than 0`,
+              );
             }
           });
         }
-        
+
         // Ports validation
         if (service.expose && service.expose.length > 0) {
           service.expose.forEach((port, portIndex) => {
             if (!port.port || port.port <= 0) {
-              validationErrors.push(`Service ${serviceNum}, Port ${portIndex + 1}: Port number must be greater than 0`);
+              validationErrors.push(
+                `Service ${serviceNum}, Port ${portIndex + 1}: Port number must be greater than 0`,
+              );
             }
             if (!port.as || port.as <= 0) {
-              validationErrors.push(`Service ${serviceNum}, Port ${portIndex + 1}: External port must be greater than 0`);
+              validationErrors.push(
+                `Service ${serviceNum}, Port ${portIndex + 1}: External port must be greater than 0`,
+              );
             }
           });
         }
       });
-      
+
       if (validationErrors.length > 0) {
         setErrors(validationErrors);
+
         return; // Don't proceed if there are validation errors
       }
-      
+
       // Clear errors if validation passes
       setErrors([]);
     }
-    
+
     // Validate Bidding step
     if (currentStep === 3) {
       const validationErrors: string[] = [];
-      
+
       // Check if any bids are available
       if (!bids || bids.length === 0) {
-        validationErrors.push("No provider bids available. Please request bids first.");
+        validationErrors.push(
+          "No provider bids available. Please request bids first.",
+        );
         setErrors(validationErrors);
+
         return;
       }
-      
+
       // Check if a bid is selected
       if (!selectedProvider || selectedProvider.trim() === "") {
         validationErrors.push("Please select a provider bid to continue");
         setErrors(validationErrors);
+
         return;
       }
-      
+
       // Clear errors if validation passes
       setErrors([]);
     }
-    
+
     // Validate Review step - auto request bids when going to Bidding step
     if (currentStep === 2) {
       // Auto request bids when moving from Review to Bidding
       if (bids.length === 0) {
         // Simulate requesting bids
-        console.log("Auto requesting bids from providers...");
         // Bids will be set by the mock useEffect
       }
     }
-    
+
     if (currentStep < STEPS.length - 1) {
       setCurrentStep(currentStep + 1);
     }
@@ -426,12 +549,12 @@ function DeployPageContent() {
     if (currentStep === 3) {
       return; // Block going back from Bidding to Configuration
     }
-    
+
     // Don't allow going back from Deploy step (step 4) to Bidding step (step 3)
     if (currentStep === 4) {
       return; // Block going back from Deploy to Bidding
     }
-    
+
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     }
@@ -445,11 +568,12 @@ function DeployPageContent() {
     if (errors.length > 0) {
       setErrors([]);
     }
-    
+
     // Update URL with app selection
     const params = new URLSearchParams(searchParams.toString());
-    params.set('app', application.id);
-    params.set('mode', 'application');
+
+    params.set("app", application.id);
+    params.set("mode", "application");
     router.push(`?${params.toString()}`);
   };
 
@@ -460,11 +584,12 @@ function DeployPageContent() {
     if (errors.length > 0) {
       setErrors([]);
     }
-    
+
     // Update URL with app selection
     const params = new URLSearchParams(searchParams.toString());
-    params.set('app', application.id);
-    params.set('mode', 'application');
+
+    params.set("app", application.id);
+    params.set("mode", "application");
     router.push(`?${params.toString()}`);
   };
 
@@ -493,6 +618,7 @@ function DeployPageContent() {
   // Service handlers
   const handleUpdateService = (index: number, updatedService: Service) => {
     const newServices = [...services];
+
     newServices[index] = updatedService;
     setServices(newServices);
     if (errors.length > 0) {
@@ -516,6 +642,7 @@ function DeployPageContent() {
       expose: [],
       env: [],
     };
+
     setServices([...services, newService]);
     if (errors.length > 0) {
       setErrors([]);
@@ -524,6 +651,7 @@ function DeployPageContent() {
 
   const handleRemoveService = (index: number) => {
     const newServices = services.filter((_, i) => i !== index);
+
     setServices(newServices);
     if (errors.length > 0) {
       setErrors([]);
@@ -535,7 +663,7 @@ function DeployPageContent() {
     setBidPrice(price);
   };
 
-  const handleAcceptBid = (providerId: string, price: string) => {
+  const _handleAcceptBid = (providerId: string, price: string) => {
     setSelectedProvider(providerId);
     setBidPrice(price);
     setIsBidAccepted(true);
@@ -553,13 +681,13 @@ function DeployPageContent() {
             deploymentName={deploymentName}
             description={description}
             maxPrice={maxPrice}
+            validationErrors={errors}
             onDeploymentNameChange={handleDeploymentNameChange}
             onDescriptionChange={handleDescriptionChange}
             onMaxPriceChange={handleMaxPriceChange}
-            validationErrors={errors}
           />
         );
-      
+
       case 1:
         return (
           <ConfigurationStep
@@ -568,49 +696,54 @@ function DeployPageContent() {
             favouriteApps={[]}
             selectedApplication={selectedApplication}
             services={services}
-            onApplicationSelect={handleApplicationSelect}
-            onUpdateService={handleUpdateService}
-            onAddService={handleAddService}
-            onRemoveService={handleRemoveService}
-            onMaxPriceChange={handleMaxPriceChange}
             validationErrors={errors}
+            onAddService={handleAddService}
+            onApplicationSelect={handleApplicationSelect}
+            onMaxPriceChange={handleMaxPriceChange}
+            onRemoveService={handleRemoveService}
+            onUpdateService={handleUpdateService}
           />
         );
-      
+
       case 2:
         return (
           <ReviewStep
             deploymentName={deploymentName}
             description={description}
+            estimatedPrice={estimatedPrice.toFixed(2)}
             maxPrice={maxPrice}
             services={services}
             totalCpu={totalCpu.toString()}
             totalMemory={totalMemory.toString()}
             totalStorage={totalStorage.toString()}
-            estimatedPrice={estimatedPrice.toFixed(2)}
           />
         );
-      
+
       case 3:
         return (
           <BiddingStep
-            isBidAccepted={isBidAccepted}
             bids={bids}
-            selectedBid={selectedProvider || ""}
+            editedBidPrice={bidPrice}
+            estimatedPrice={estimatedPrice.toString()}
+            favouriteProviders={[]}
+            isBidAccepted={isBidAccepted}
+            isEditingBidPrice={isEditingBid}
             isSubmitting={false}
+            maxPrice={maxPrice}
+            selectedBid={selectedProvider || ""}
+            selectedRegion="any"
+            services={services}
             totalCpu={totalCpu.toString()}
             totalMemory={totalMemory.toString()}
             totalStorage={totalStorage.toString()}
-            maxPrice={maxPrice}
-            estimatedPrice={estimatedPrice.toString()}
-            services={services}
-            selectedRegion="any"
-            isEditingBidPrice={isEditingBid}
-            editedBidPrice={bidPrice}
-            favouriteProviders={[]}
             validationErrors={errors}
-            onRequestBids={() => {}}
             onAcceptBid={() => {}}
+            onCancelBidPriceEdit={() => setIsEditingBid(false)}
+            onEditBidPrice={() => setIsEditingBid(true)}
+            onEditedBidPriceChange={handleBidPriceChange}
+            onEstimatedPriceClick={() => {}}
+            onRequestBids={() => {}}
+            onSaveBidPrice={() => setIsEditingBid(false)}
             onSelectBid={(bidId) => {
               setSelectedProvider(bidId);
               setIsBidAccepted(true);
@@ -619,22 +752,12 @@ function DeployPageContent() {
               }
             }}
             onToggleFavouriteProvider={() => {}}
-            onEditBidPrice={() => setIsEditingBid(true)}
-            onSaveBidPrice={() => setIsEditingBid(false)}
-            onCancelBidPriceEdit={() => setIsEditingBid(false)}
-            onEstimatedPriceClick={() => {}}
-            onEditedBidPriceChange={handleBidPriceChange}
           />
         );
-      
+
       case 4:
-        return (
-          <DeployStep
-            isSubmitting={false}
-            onDeploy={() => {}}
-          />
-        );
-      
+        return <DeployStep isSubmitting={false} onDeploy={() => {}} />;
+
       default:
         return null;
     }
@@ -650,9 +773,14 @@ function DeployPageContent() {
   const isNextDisabled = () => {
     // Bidding step - disable if no bids or no selection
     if (currentStep === 3) {
-      return !bids || bids.length === 0 || !selectedProvider || selectedProvider.trim() === "";
+      return (
+        !bids ||
+        bids.length === 0 ||
+        !selectedProvider ||
+        selectedProvider.trim() === ""
+      );
     }
-    
+
     // Other steps - always enabled
     return false;
   };
@@ -680,10 +808,10 @@ function DeployPageContent() {
               </h2>
               <div className="text-center">
                 <Button
+                  className="px-8 py-3"
                   color="primary"
                   size="lg"
                   onClick={() => setIsApplicationModalOpen(true)}
-                  className="px-8 py-3"
                 >
                   Choose Application
                 </Button>
@@ -719,10 +847,10 @@ function DeployPageContent() {
         <div className="mb-8">
           <ProgressIndicator
             currentTab={currentStep}
-            tabs={STEPS.map(step => ({
+            tabs={STEPS.map((step) => ({
               id: step.id.toString(),
               title: step.title,
-              icon: step.icon
+              icon: step.icon,
             }))}
           />
         </div>
@@ -737,11 +865,13 @@ function DeployPageContent() {
               {/* Navigation */}
               <div className="flex justify-between mt-8">
                 <Button
-                  variant="ghost"
-                  startContent={<ArrowLeft size={20} />}
-                  onPress={handlePrevStep}
+                  className={
+                    isPrevDisabled() ? "opacity-50 cursor-not-allowed" : ""
+                  }
                   isDisabled={isPrevDisabled()}
-                  className={isPrevDisabled() ? "opacity-50 cursor-not-allowed" : ""}
+                  startContent={<ArrowLeft size={20} />}
+                  variant="ghost"
+                  onPress={handlePrevStep}
                 >
                   Previous
                 </Button>
@@ -757,12 +887,14 @@ function DeployPageContent() {
                     </Button>
                   ) : (
                     <Button
+                      className={
+                        isNextDisabled() ? "opacity-50 cursor-not-allowed" : ""
+                      }
                       color="primary"
                       endContent={<ArrowRight size={20} />}
-                      onPress={handleNextStep}
-                      size="lg"
                       isDisabled={isNextDisabled()}
-                      className={isNextDisabled() ? "opacity-50 cursor-not-allowed" : ""}
+                      size="lg"
+                      onPress={handleNextStep}
                     >
                       Next
                     </Button>
@@ -775,19 +907,19 @@ function DeployPageContent() {
             <div className="hidden lg:block w-80 flex-shrink-0">
               <div className="sticky top-8 h-[calc(100vh-4rem)] overflow-y-auto">
                 <DeploymentSummary
+                  bids={bids}
+                  deploymentMode="application"
                   deploymentName={deploymentName}
                   description={description}
                   maxPrice={maxPrice}
-                  selectedRegion={selectedRegion}
-                  deploymentMode="application"
+                  selectedBid={selectedBid}
+                  selectedRegion="any"
                   selectedTemplate={null}
                   services={services}
                   totalCpu={totalCpu}
+                  totalGpu={0}
                   totalMemory={`${totalMemory}Gi`}
                   totalStorage={`${totalStorage}Gi`}
-                  totalGpu={0}
-                  selectedBid={selectedBid}
-                  bids={bids}
                   onMaxPriceChange={handleMaxPriceChange}
                 />
               </div>

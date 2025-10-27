@@ -3,23 +3,19 @@
 import React, { useState } from "react";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
-import { Chip } from "@heroui/chip";
-import { 
-  DollarSign, 
-  CheckCircle, 
-  AlertCircle, 
+import {
+  CheckCircle,
+  AlertCircle,
   Heart,
   MapPin,
   Users,
-  Server,
   Activity,
   Shield,
   Clock,
-  TrendingUp,
-  Zap,
   Eye,
-  Star
+  Star,
 } from "lucide-react";
+
 import ProviderDetailsModal from "../ProviderDetailsModal";
 
 interface BiddingStepProps {
@@ -50,30 +46,30 @@ interface BiddingStepProps {
 }
 
 export default function BiddingStep({
-  isBidAccepted,
+  isBidAccepted: _isBidAccepted,
   bids,
   selectedBid,
-  isSubmitting,
-  totalCpu,
-  totalMemory,
-  totalStorage,
-  maxPrice,
-  estimatedPrice,
-  services,
-  selectedRegion,
-  isEditingBidPrice,
-  editedBidPrice,
+  isSubmitting: _isSubmitting,
+  totalCpu: _totalCpu,
+  totalMemory: _totalMemory,
+  totalStorage: _totalStorage,
+  maxPrice: _maxPrice,
+  estimatedPrice: _estimatedPrice,
+  services: _services,
+  selectedRegion: _selectedRegion,
+  isEditingBidPrice: _isEditingBidPrice,
+  editedBidPrice: _editedBidPrice,
   favouriteProviders,
   validationErrors,
-  onRequestBids,
-  onAcceptBid,
+  onRequestBids: _onRequestBids,
+  onAcceptBid: _onAcceptBid,
   onSelectBid,
   onToggleFavouriteProvider,
-  onEditBidPrice,
-  onSaveBidPrice,
-  onCancelBidPriceEdit,
-  onEstimatedPriceClick,
-  onEditedBidPriceChange
+  onEditBidPrice: _onEditBidPrice,
+  onSaveBidPrice: _onSaveBidPrice,
+  onCancelBidPriceEdit: _onCancelBidPriceEdit,
+  onEstimatedPriceClick: _onEstimatedPriceClick,
+  onEditedBidPriceChange: _onEditedBidPriceChange,
 }: BiddingStepProps) {
   const [selectedProvider, setSelectedProvider] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -82,6 +78,7 @@ export default function BiddingStep({
     setSelectedProvider(bid.provider);
     setIsModalOpen(true);
   };
+
   return (
     <div className="space-y-6">
       {/* Validation Errors */}
@@ -90,7 +87,9 @@ export default function BiddingStep({
           <CardBody className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <AlertCircle className="text-danger" size={20} />
-              <h3 className="font-semibold text-danger">Please fix the following errors:</h3>
+              <h3 className="font-semibold text-danger">
+                Please fix the following errors:
+              </h3>
             </div>
             <ul className="mt-2 space-y-1">
               {validationErrors.map((error, index) => (
@@ -129,14 +128,17 @@ export default function BiddingStep({
                       ? "border-primary bg-gradient-to-r from-primary/5 to-primary/10 shadow-lg"
                       : "border-default-200 hover:border-primary/50 hover:bg-gradient-to-r hover:from-primary/5 hover:to-primary/10 hover:shadow-md"
                   }`}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => onSelectBid(bid.id)}
+                  onKeyDown={(e) => e.key === "Enter" && onSelectBid(bid.id)}
                 >
                   {/* Header */}
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center">
                         {selectedBid === bid.id && (
-                          <div className="w-2 h-2 bg-primary rounded-full"></div>
+                          <div className="w-2 h-2 bg-primary rounded-full" />
                         )}
                       </div>
                       <div>
@@ -149,20 +151,24 @@ export default function BiddingStep({
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-1">
                       <Button
-                        variant="ghost"
-                        size="sm"
                         isIconOnly
+                        size="sm"
+                        variant="ghost"
                         onClick={(e) => {
                           e.stopPropagation();
                           onToggleFavouriteProvider(bid.provider.id);
                         }}
                       >
-                        <Heart 
-                          size={16} 
-                          className={favouriteProviders.includes(bid.provider.id) ? "text-red-500 fill-red-500" : "text-gray-400"}
+                        <Heart
+                          className={
+                            favouriteProviders.includes(bid.provider.id)
+                              ? "text-red-500 fill-red-500"
+                              : "text-gray-400"
+                          }
+                          size={16}
                         />
                       </Button>
                     </div>
@@ -179,7 +185,7 @@ export default function BiddingStep({
                         {bid.provider.rating}
                       </div>
                     </div>
-                    
+
                     <div className="bg-white/60 p-2 rounded text-center">
                       <div className="flex items-center justify-center gap-1 mb-1">
                         <Activity className="text-green-500" size={12} />
@@ -189,11 +195,13 @@ export default function BiddingStep({
                         {bid.provider.uptime}
                       </div>
                     </div>
-                    
+
                     <div className="bg-white/60 p-2 rounded text-center">
                       <div className="flex items-center justify-center gap-1 mb-1">
                         <Users className="text-blue-500" size={12} />
-                        <span className="text-xs text-default-600">Deployments</span>
+                        <span className="text-xs text-default-600">
+                          Deployments
+                        </span>
                       </div>
                       <div className="font-bold text-sm text-blue-600">
                         {bid.provider.activeDeployments || "1,247"}
@@ -204,7 +212,9 @@ export default function BiddingStep({
                   {/* Price */}
                   <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-3 rounded-lg mb-3">
                     <div className="flex items-center justify-between">
-                      <h4 className="font-semibold text-primary text-sm">Price</h4>
+                      <h4 className="font-semibold text-primary text-sm">
+                        Price
+                      </h4>
                       <div className="text-right">
                         <div className="text-xl font-bold text-primary">
                           {bid.price} SCU/h
@@ -223,13 +233,15 @@ export default function BiddingStep({
                       </div>
                       <div className="flex items-center gap-1">
                         <Clock className="text-blue-500" size={12} />
-                        <span className="text-default-600">{bid.provider.responseTime || "< 5min"}</span>
+                        <span className="text-default-600">
+                          {bid.provider.responseTime || "< 5min"}
+                        </span>
                       </div>
                     </div>
-                    
+
                     <Button
-                      variant="ghost"
                       size="sm"
+                      variant="ghost"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleViewDetails(bid);
@@ -253,7 +265,8 @@ export default function BiddingStep({
             <div className="text-6xl mb-4">📡</div>
             <h3 className="text-xl font-semibold mb-2">Requesting Bids...</h3>
             <p className="text-default-600">
-              We're contacting providers to get the best offers for your deployment.
+              We&apos;re contacting providers to get the best offers for your
+              deployment.
             </p>
           </CardBody>
         </Card>
@@ -262,8 +275,8 @@ export default function BiddingStep({
       {/* Provider Details Modal */}
       <ProviderDetailsModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
         provider={selectedProvider}
+        onClose={() => setIsModalOpen(false)}
       />
     </div>
   );

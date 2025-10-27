@@ -1,14 +1,18 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useWallet } from "@/hooks/use-wallet";
+
 import WalletRequiredModal from "./WalletRequiredModal";
+
+import { useWallet } from "@/hooks/use-wallet";
 
 interface WalletAuthGuardProps {
   children: React.ReactNode;
 }
 
-export const WalletAuthGuard: React.FC<WalletAuthGuardProps> = ({ children }) => {
+export const WalletAuthGuard: React.FC<WalletAuthGuardProps> = ({
+  children,
+}) => {
   const [isClient, setIsClient] = useState(false);
   const { isConnected, isLoading, isMetaMaskInstalled } = useWallet();
 
@@ -22,7 +26,7 @@ export const WalletAuthGuard: React.FC<WalletAuthGuardProps> = ({ children }) =>
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
           <p className="text-gray-600">Checking wallet connection...</p>
         </div>
       </div>
@@ -40,13 +44,14 @@ export const WalletAuthGuard: React.FC<WalletAuthGuardProps> = ({ children }) =>
               MetaMask Not Installed
             </h2>
             <p className="text-gray-600 mb-6">
-              To use the deploy feature, you need to install the MetaMask extension.
+              To use the deploy feature, you need to install the MetaMask
+              extension.
             </p>
             <a
-              href="https://metamask.io/download/"
-              target="_blank"
-              rel="noopener noreferrer"
               className="inline-block bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+              href="https://metamask.io/download/"
+              rel="noopener noreferrer"
+              target="_blank"
             >
               Install MetaMask
             </a>
