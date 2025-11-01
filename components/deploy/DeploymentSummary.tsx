@@ -111,7 +111,8 @@ export default function DeploymentSummary({
     return {
       totalUnits: totalGpuUnits,
       models: Array.from(gpuModels).map((modelKey: unknown) => {
-        const [vendor, model, memory, gpuInterface] = String(modelKey).split("-");
+        const [vendor, model, memory, gpuInterface] =
+          String(modelKey).split("-");
 
         return { vendor, model, memory, interface: gpuInterface };
       }),

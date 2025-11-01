@@ -25,12 +25,12 @@ import {
   ChevronDown,
   User,
   BarChart3,
-  ShoppingCart,
   Settings,
   LogOut,
   Copy,
   ExternalLink,
   Server,
+  Network,
 } from "lucide-react";
 
 import { siteConfig } from "@/config/site";
@@ -249,25 +249,49 @@ export const Navbar = () => {
                   </DropdownItem>
 
                   <DropdownItem
-                    key="marketplace"
+                    key="provider-dashboard"
                     as={NextLink}
-                    className="h-10 p-3 rounded-lg hover:bg-secondary/5"
+                    className="h-10 p-3 rounded-lg hover:bg-primary/5"
                     endContent={
                       <ExternalLink className="text-gray-400" size={12} />
                     }
-                    href="/marketplace"
+                    href="/provider"
                     startContent={
-                      <div className="w-6 h-6 rounded-lg bg-secondary/10 flex items-center justify-center">
-                        <ShoppingCart className="text-secondary" size={14} />
+                      <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Server className="text-primary" size={14} />
                       </div>
                     }
                   >
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-gray-900">
-                        Marketplace
+                        Provider Dashboard
                       </span>
                       <span className="text-xs text-gray-500">
-                        • Browse providers
+                        • Manage provider
+                      </span>
+                    </div>
+                  </DropdownItem>
+
+                  <DropdownItem
+                    key="vpn"
+                    as={NextLink}
+                    className="h-10 p-3 rounded-lg hover:bg-secondary/5"
+                    endContent={
+                      <ExternalLink className="text-gray-400" size={12} />
+                    }
+                    href="/vpn"
+                    startContent={
+                      <div className="w-6 h-6 rounded-lg bg-secondary/10 flex items-center justify-center">
+                        <Network className="text-secondary" size={14} />
+                      </div>
+                    }
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-900">
+                        VPN Settings
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        • Manage VPN IPs
                       </span>
                     </div>
                   </DropdownItem>

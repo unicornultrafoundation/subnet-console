@@ -119,11 +119,11 @@ export default function DeploySteps({
             selectedApplication={selectedApplication}
             services={services}
             validationErrors={validationErrors}
-            onApplicationSelect={onApplicationSelect}
-            onUpdateService={() => {}}
             onAddService={() => {}}
-            onRemoveService={() => {}}
+            onApplicationSelect={onApplicationSelect}
             onMaxPriceChange={onMaxPriceChange}
+            onRemoveService={() => {}}
+            onUpdateService={() => {}}
           />
         );
       case 2:

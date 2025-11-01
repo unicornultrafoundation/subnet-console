@@ -22,25 +22,30 @@ export default function DocsPage() {
   return (
     <div className="space-y-12">
       {/* Getting Started */}
-      <section id="getting-started" className="scroll-mt-20">
+      <section className="scroll-mt-20" id="getting-started">
         <div className="mb-6">
           <h2 className="text-3xl font-bold mb-2 flex items-center gap-3">
             <BookOpen className="text-primary" size={28} />
             Getting Started
           </h2>
           <p className="text-default-600">
-            Learn how to deploy and manage your applications on the Subnet Console
+            Learn how to deploy and manage your applications on the Subnet
+            Console
           </p>
         </div>
 
         <Card className="subnet-card shadow-lg">
           <CardBody className="space-y-6">
             <div>
-              <h3 className="text-xl font-semibold mb-3">Welcome to Subnet Console</h3>
+              <h3 className="text-xl font-semibold mb-3">
+                Welcome to Subnet Console
+              </h3>
               <p className="text-default-600 mb-4">
-                Subnet Console is a decentralized application deployment platform that enables
-                you to deploy and manage your applications on a distributed network of providers.
-                With MetaMask integration, you can seamlessly manage your deployments and payments.
+                Subnet Console is a decentralized application deployment
+                platform that enables you to deploy and manage your applications
+                on a distributed network of providers. With MetaMask
+                integration, you can seamlessly manage your deployments and
+                payments.
               </p>
             </div>
 
@@ -48,13 +53,16 @@ export default function DocsPage() {
               <h3 className="text-lg font-semibold mb-3">Quick Start</h3>
               <ol className="space-y-3 list-decimal list-inside">
                 <li>
-                  <strong>Connect Wallet</strong> - Click "Connect Wallet" to link your MetaMask
+                  <strong>Connect Wallet</strong> - Click &quot;Connect
+                  Wallet&quot; to link your MetaMask
                 </li>
                 <li>
-                  <strong>Build Application</strong> - Create your application using the Application Builder
+                  <strong>Build Application</strong> - Create your application
+                  using the Application Builder
                 </li>
                 <li>
-                  <strong>Deploy</strong> - Choose deployment settings and request bids from providers
+                  <strong>Deploy</strong> - Choose deployment settings and
+                  request bids from providers
                 </li>
                 <li>
                   <strong>Manage</strong> - Monitor and manage your deployments
@@ -84,7 +92,7 @@ export default function DocsPage() {
       </section>
 
       {/* Features */}
-      <section id="features" className="scroll-mt-20">
+      <section className="scroll-mt-20" id="features">
         <div className="mb-6">
           <h2 className="text-3xl font-bold mb-2 flex items-center gap-3">
             <Zap className="text-primary" size={28} />
@@ -100,11 +108,13 @@ export default function DocsPage() {
             <CardBody>
               <div className="flex items-center gap-3 mb-3">
                 <Server className="text-primary" size={24} />
-                <h3 className="text-xl font-semibold">Decentralized Deployment</h3>
+                <h3 className="text-xl font-semibold">
+                  Decentralized Deployment
+                </h3>
               </div>
               <p className="text-default-600">
-                Deploy your applications across a distributed network of providers,
-                ensuring high availability and redundancy.
+                Deploy your applications across a distributed network of
+                providers, ensuring high availability and redundancy.
               </p>
             </CardBody>
           </Card>
@@ -113,10 +123,13 @@ export default function DocsPage() {
             <CardBody>
               <div className="flex items-center gap-3 mb-3">
                 <Network className="text-primary" size={24} />
-                <h3 className="text-xl font-semibold">Multi-Provider Support</h3>
+                <h3 className="text-xl font-semibold">
+                  Multi-Provider Support
+                </h3>
               </div>
               <p className="text-default-600">
-                Choose from multiple providers based on pricing, location, and available resources.
+                Choose from multiple providers based on pricing, location, and
+                available resources.
               </p>
             </CardBody>
           </Card>
@@ -128,7 +141,8 @@ export default function DocsPage() {
                 <h3 className="text-xl font-semibold">Auto Scaling</h3>
               </div>
               <p className="text-default-600">
-                Automatic scaling based on demand ensures optimal performance and cost efficiency.
+                Automatic scaling based on demand ensures optimal performance
+                and cost efficiency.
               </p>
             </CardBody>
           </Card>
@@ -140,7 +154,8 @@ export default function DocsPage() {
                 <h3 className="text-xl font-semibold">Global CDN</h3>
               </div>
               <p className="text-default-600">
-                Built-in content delivery network for fast global access to your applications.
+                Built-in content delivery network for fast global access to your
+                applications.
               </p>
             </CardBody>
           </Card>
@@ -148,7 +163,7 @@ export default function DocsPage() {
       </section>
 
       {/* Deployment Guide */}
-      <section id="deployment" className="scroll-mt-20">
+      <section className="scroll-mt-20" id="deployment">
         <div className="mb-6">
           <h2 className="text-3xl font-bold mb-2 flex items-center gap-3">
             <Rocket className="text-primary" size={28} />
@@ -162,9 +177,12 @@ export default function DocsPage() {
         <Card className="subnet-card shadow-lg">
           <CardBody className="space-y-6">
             <div>
-              <h3 className="text-xl font-semibold mb-3">1. Create an Application</h3>
+              <h3 className="text-xl font-semibold mb-3">
+                1. Create an Application
+              </h3>
               <p className="text-default-600 mb-3">
-                Start by building your application using our Application Builder. You can:
+                Start by building your application using our Application
+                Builder. You can:
               </p>
               <ul className="space-y-2 list-disc list-inside ml-4">
                 <li>Define your services and containers</li>
@@ -175,7 +193,9 @@ export default function DocsPage() {
             </div>
 
             <div>
-              <h3 className="text-xl font-semibold mb-3">2. Configure Deployment</h3>
+              <h3 className="text-xl font-semibold mb-3">
+                2. Configure Deployment
+              </h3>
               <p className="text-default-600 mb-3">
                 Set your deployment preferences:
               </p>
@@ -203,8 +223,9 @@ export default function DocsPage() {
             <div>
               <h3 className="text-xl font-semibold mb-3">4. Deploy</h3>
               <p className="text-default-600">
-                Once you've selected a provider, click deploy to start your application.
-                Monitor the deployment status and manage your application from the dashboard.
+                Once you&apos;ve selected a provider, click deploy to start your
+                application. Monitor the deployment status and manage your
+                application from the dashboard.
               </p>
             </div>
           </CardBody>
@@ -212,7 +233,7 @@ export default function DocsPage() {
       </section>
 
       {/* API Reference */}
-      <section id="api" className="scroll-mt-20">
+      <section className="scroll-mt-20" id="api">
         <div className="mb-6">
           <h2 className="text-3xl font-bold mb-2 flex items-center gap-3">
             <CodeIcon className="text-primary" size={28} />
@@ -228,7 +249,8 @@ export default function DocsPage() {
             <div>
               <h3 className="text-lg font-semibold mb-2">Authentication</h3>
               <p className="text-default-600 mb-3">
-                All API requests require authentication via your MetaMask wallet.
+                All API requests require authentication via your MetaMask
+                wallet.
               </p>
               <div className="bg-default-100 p-4 rounded-lg font-mono text-sm">
                 <code>Authorization: Bearer YOUR_WALLET_ADDRESS</code>
@@ -240,7 +262,9 @@ export default function DocsPage() {
               <div className="space-y-4">
                 <div className="border border-default-200 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <Chip color="success" size="sm">GET</Chip>
+                    <Chip color="success" size="sm">
+                      GET
+                    </Chip>
                     <code className="font-semibold">/api/deployments</code>
                   </div>
                   <p className="text-sm text-default-600">
@@ -250,7 +274,9 @@ export default function DocsPage() {
 
                 <div className="border border-default-200 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <Chip color="primary" size="sm">POST</Chip>
+                    <Chip color="primary" size="sm">
+                      POST
+                    </Chip>
                     <code className="font-semibold">/api/deployments</code>
                   </div>
                   <p className="text-sm text-default-600">
@@ -260,7 +286,9 @@ export default function DocsPage() {
 
                 <div className="border border-default-200 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <Chip color="warning" size="sm">PUT</Chip>
+                    <Chip color="warning" size="sm">
+                      PUT
+                    </Chip>
                     <code className="font-semibold">/api/deployments/:id</code>
                   </div>
                   <p className="text-sm text-default-600">
@@ -270,7 +298,9 @@ export default function DocsPage() {
 
                 <div className="border border-default-200 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <Chip color="danger" size="sm">DELETE</Chip>
+                    <Chip color="danger" size="sm">
+                      DELETE
+                    </Chip>
                     <code className="font-semibold">/api/deployments/:id</code>
                   </div>
                   <p className="text-sm text-default-600">
@@ -284,7 +314,7 @@ export default function DocsPage() {
       </section>
 
       {/* Security */}
-      <section id="security" className="scroll-mt-20">
+      <section className="scroll-mt-20" id="security">
         <div className="mb-6">
           <h2 className="text-3xl font-bold mb-2 flex items-center gap-3">
             <Shield className="text-primary" size={28} />
@@ -300,24 +330,27 @@ export default function DocsPage() {
             <div>
               <h3 className="text-lg font-semibold mb-2">Wallet Security</h3>
               <p className="text-default-600">
-                All transactions and authentications are secured through your MetaMask wallet.
-                Private keys never leave your device, ensuring complete security.
+                All transactions and authentications are secured through your
+                MetaMask wallet. Private keys never leave your device, ensuring
+                complete security.
               </p>
             </div>
 
             <div>
               <h3 className="text-lg font-semibold mb-2">Data Encryption</h3>
               <p className="text-default-600">
-                All data transmitted between your browser and providers is encrypted using
-                TLS/SSL protocols. Application data is encrypted at rest.
+                All data transmitted between your browser and providers is
+                encrypted using TLS/SSL protocols. Application data is encrypted
+                at rest.
               </p>
             </div>
 
             <div>
               <h3 className="text-lg font-semibold mb-2">Access Control</h3>
               <p className="text-default-600">
-                Only you have access to your deployments through your wallet. Providers
-                cannot access your application data or logs without your permission.
+                Only you have access to your deployments through your wallet.
+                Providers cannot access your application data or logs without
+                your permission.
               </p>
             </div>
           </CardBody>
@@ -325,15 +358,13 @@ export default function DocsPage() {
       </section>
 
       {/* FAQ */}
-      <section id="faq" className="scroll-mt-20">
+      <section className="scroll-mt-20" id="faq">
         <div className="mb-6">
           <h2 className="text-3xl font-bold mb-2 flex items-center gap-3">
             <AlertCircle className="text-primary" size={28} />
             Frequently Asked Questions
           </h2>
-          <p className="text-default-600">
-            Common questions and answers
-          </p>
+          <p className="text-default-600">Common questions and answers</p>
         </div>
 
         <div className="space-y-4">
@@ -343,57 +374,67 @@ export default function DocsPage() {
             </CardHeader>
             <CardBody>
               <p className="text-default-600">
-                Simply connect your MetaMask wallet, build your application, and deploy.
-                No credit card or registration required.
+                Simply connect your MetaMask wallet, build your application, and
+                deploy. No credit card or registration required.
               </p>
             </CardBody>
           </Card>
 
           <Card className="subnet-card shadow-lg">
             <CardHeader>
-              <h3 className="text-lg font-semibold">What are the pricing models?</h3>
+              <h3 className="text-lg font-semibold">
+                What are the pricing models?
+              </h3>
             </CardHeader>
             <CardBody>
               <p className="text-default-600">
-                Pricing is based on resource usage (CPU, memory, storage, GPU). You set
-                your maximum price per hour, and providers bid within that limit.
+                Pricing is based on resource usage (CPU, memory, storage, GPU).
+                You set your maximum price per hour, and providers bid within
+                that limit.
               </p>
             </CardBody>
           </Card>
 
           <Card className="subnet-card shadow-lg">
             <CardHeader>
-              <h3 className="text-lg font-semibold">Can I scale my deployment?</h3>
+              <h3 className="text-lg font-semibold">
+                Can I scale my deployment?
+              </h3>
             </CardHeader>
             <CardBody>
               <p className="text-default-600">
-                Yes! You can scale your deployment up or down at any time through the
-                dashboard. Changes take effect immediately.
+                Yes! You can scale your deployment up or down at any time
+                through the dashboard. Changes take effect immediately.
               </p>
             </CardBody>
           </Card>
 
           <Card className="subnet-card shadow-lg">
             <CardHeader>
-              <h3 className="text-lg font-semibold">What payment methods are supported?</h3>
+              <h3 className="text-lg font-semibold">
+                What payment methods are supported?
+              </h3>
             </CardHeader>
             <CardBody>
               <p className="text-default-600">
-                Currently, we support payment through cryptocurrency (Ethereum, Polygon)
-                via your MetaMask wallet. Traditional payment methods coming soon.
+                Currently, we support payment through cryptocurrency (Ethereum,
+                Polygon) via your MetaMask wallet. Traditional payment methods
+                coming soon.
               </p>
             </CardBody>
           </Card>
 
           <Card className="subnet-card shadow-lg">
             <CardHeader>
-              <h3 className="text-lg font-semibold">How is my application data protected?</h3>
+              <h3 className="text-lg font-semibold">
+                How is my application data protected?
+              </h3>
             </CardHeader>
             <CardBody>
               <p className="text-default-600">
-                All data is encrypted both in transit and at rest. Only you have access
-                to your deployments through your wallet. See our{" "}
-                <Link href="#security" className="text-primary hover:underline">
+                All data is encrypted both in transit and at rest. Only you have
+                access to your deployments through your wallet. See our{" "}
+                <Link className="text-primary hover:underline" href="#security">
                   Security section
                 </Link>{" "}
                 for more details.
@@ -419,7 +460,7 @@ export default function DocsPage() {
                 </Button>
               </Link>
               <Link href="/marketplace">
-                <Button variant="bordered" size="lg">
+                <Button size="lg" variant="bordered">
                   Browse Marketplace
                 </Button>
               </Link>

@@ -39,21 +39,51 @@ export interface Node {
   name: string;
   description: string;
   status: "active" | "inactive" | "maintenance" | "offline";
+  // Kubernetes-specific fields
+  clusterId?: string;
+  clusterName?: string;
+  role?: "master" | "worker" | "control-plane";
+  nodeName?: string; // Kubernetes node name
+  labels?: Record<string, string>;
+  taints?: Array<{
+    key: string;
+    value?: string;
+    effect: "NoSchedule" | "PreferNoSchedule" | "NoExecute";
+  }>;
+  kubernetesVersion?: string;
+  containerRuntime?: string;
+  osImage?: string;
+  kernelVersion?: string;
+  kubeletVersion?: string;
+  // Pod information
+  pods?: {
+    running: number;
+    pending: number;
+    failed: number;
+    succeeded: number;
+    total: number;
+    capacity: number;
+  };
+  // Resource specs
   specs: {
     cpu: number;
-    memory: number;
-    storage: number;
-    bandwidth: number;
+    memory: number; // in GB
+    storage: number; // in GB
+    bandwidth: number; // in Mbps
+    pods: number; // max pods per node
+  };
+  // Resource usage
+  usage?: {
+    cpu: number; // percentage
+    memory: number; // percentage
+    storage: number; // percentage
+    pods: number; // actual pods running
   };
   location: {
     country: string;
     region: string;
     city: string;
-  };
-  pricing: {
-    hourly: number;
-    daily: number;
-    monthly: number;
+    zone?: string; // Kubernetes zone
   };
   uptime: number;
   reputation: number;
@@ -67,7 +97,31 @@ export interface NodeMetrics {
   storage: number;
   bandwidth: number;
   uptime: number;
+  pods?: number;
   timestamp: string;
+}
+
+// Kubernetes Pod interface
+export interface Pod {
+  id: string;
+  name: string;
+  namespace: string;
+  nodeId: string;
+  nodeName: string;
+  status: "Running" | "Pending" | "Succeeded" | "Failed" | "Unknown";
+  phase: string;
+  containers: Array<{
+    name: string;
+    image: string;
+    status: "running" | "waiting" | "terminated";
+    restartCount: number;
+  }>;
+  resources: {
+    cpu: string;
+    memory: string;
+  };
+  createdAt: string;
+  startedAt?: string;
 }
 
 // Deployment types

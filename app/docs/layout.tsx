@@ -29,41 +29,43 @@ export default function DocsLayout({
               <Card className="shadow-lg">
                 <CardBody className="space-y-2">
                   <div className="mb-4">
-                    <h3 className="font-semibold text-default-700">Navigation</h3>
+                    <h3 className="font-semibold text-default-700">
+                      Navigation
+                    </h3>
                   </div>
                   <Link
-                    href="#getting-started"
                     className="block py-2 px-3 rounded-lg hover:bg-default-100 transition-colors text-sm"
+                    href="#getting-started"
                   >
                     Getting Started
                   </Link>
                   <Link
-                    href="#features"
                     className="block py-2 px-3 rounded-lg hover:bg-default-100 transition-colors text-sm"
+                    href="#features"
                   >
                     Features
                   </Link>
                   <Link
-                    href="#deployment"
                     className="block py-2 px-3 rounded-lg hover:bg-default-100 transition-colors text-sm"
+                    href="#deployment"
                   >
                     Deployment
                   </Link>
                   <Link
-                    href="#api"
                     className="block py-2 px-3 rounded-lg hover:bg-default-100 transition-colors text-sm"
+                    href="#api"
                   >
                     API Reference
                   </Link>
                   <Link
-                    href="#security"
                     className="block py-2 px-3 rounded-lg hover:bg-default-100 transition-colors text-sm"
+                    href="#security"
                   >
                     Security
                   </Link>
                   <Link
-                    href="#faq"
                     className="block py-2 px-3 rounded-lg hover:bg-default-100 transition-colors text-sm"
+                    href="#faq"
                   >
                     FAQ
                   </Link>
@@ -73,9 +75,7 @@ export default function DocsLayout({
           </aside>
 
           {/* Main Content */}
-          <div className="lg:col-span-3">
-            {children}
-          </div>
+          <div className="lg:col-span-3">{children}</div>
         </div>
       </div>
     </div>
