@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
@@ -36,6 +37,8 @@ interface AppCardProps {
 }
 
 export default function AppCard({ app }: AppCardProps) {
+  const router = useRouter();
+
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case "AI/ML":
@@ -53,6 +56,10 @@ export default function AppCard({ app }: AppCardProps) {
       default:
         return <Code className="text-primary" size={24} />;
     }
+  };
+
+  const handleDeploy = () => {
+    router.push(`/deploy?app=${app.id}&mode=application`);
   };
 
   return (
@@ -124,6 +131,7 @@ export default function AppCard({ app }: AppCardProps) {
             className="flex-1"
             color="primary"
             startContent={<Play size={16} />}
+            onPress={handleDeploy}
           >
             Deploy
           </Button>

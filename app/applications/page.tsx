@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Link } from "@heroui/link";
@@ -28,6 +29,7 @@ import {
 import { App } from "@/components/marketplace/types";
 
 export default function ApplicationsPage() {
+  const router = useRouter();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [filters, setFilters] = useState({
     search: "",
@@ -222,6 +224,10 @@ export default function ApplicationsPage() {
       }
     });
 
+  const handleDeploy = (appId: string) => {
+    router.push(`/deploy?app=${appId}&mode=application`);
+  };
+
   const AppCard = ({ app }: { app: App }) => (
     <Card className="subnet-card hover:scale-105 transition-transform duration-300">
       <CardHeader className="pb-4">
@@ -311,6 +317,7 @@ export default function ApplicationsPage() {
             color="primary"
             size="sm"
             startContent={<Play size={16} />}
+            onPress={() => handleDeploy(app.id)}
           >
             Deploy
           </Button>
@@ -394,6 +401,7 @@ export default function ApplicationsPage() {
                 color="primary"
                 size="sm"
                 startContent={<Play size={16} />}
+                onPress={() => handleDeploy(app.id)}
               >
                 Deploy
               </Button>
