@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, use } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Link } from "@heroui/link";
@@ -30,6 +31,7 @@ export default function ProviderDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const resolvedParams = use(params);
+  const router = useRouter();
   const [isDeploying, setIsDeploying] = useState(false);
 
   // Mock data - in real app, this would be fetched based on resolvedParams.id
@@ -221,14 +223,8 @@ export default function ProviderDetailPage({
     },
   ];
 
-  const handleDeploy = async () => {
-    setIsDeploying(true);
-    // Simulate deployment process
-    setTimeout(() => {
-      setIsDeploying(false);
-      // In real app, redirect to deployment page or show success message
-      alert("Deployment initiated successfully!");
-    }, 2000);
+  const handleDeploy = () => {
+    router.push(`/deploy?provider=${resolvedParams.id}`);
   };
 
   const handleDeployWithTemplate = async (deployment: any) => {
@@ -752,12 +748,11 @@ export default function ProviderDetailPage({
                   <Button
                     className="w-full"
                     color="primary"
-                    isLoading={isDeploying}
                     size="lg"
-                    startContent={!isDeploying ? <Play size={20} /> : undefined}
+                    startContent={<Play size={20} />}
                     onClick={handleDeploy}
                   >
-                    {isDeploying ? "Deploying..." : "Deploy Now"}
+                    Deploy Now
                   </Button>
 
                   <div className="text-xs text-default-500 text-center">
