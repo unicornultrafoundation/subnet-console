@@ -21,6 +21,9 @@ import ConfigurationStep from "@/components/deploy/steps/ConfigurationStep";
 import ReviewStep from "@/components/deploy/steps/ReviewStep";
 import BiddingStep from "@/components/deploy/steps/BiddingStep";
 import DeployStep from "@/components/deploy/steps/DeployStep";
+import MethodSelectionStep from "@/components/deploy/steps/MethodSelectionStep";
+import DirectAcceptStep from "@/components/deploy/steps/DirectAcceptStep";
+import SelectProviderStep from "@/components/deploy/steps/SelectProviderStep";
 import ProgressIndicator from "@/components/deploy/ProgressIndicator";
 import ApplicationSelectionModal from "@/components/deploy/ApplicationSelectionModal";
 import DeploymentSummary from "@/components/deploy/DeploymentSummary";
@@ -51,18 +54,57 @@ interface Application {
   services: Service[];
 }
 
-const STEPS = [
-  { id: 0, title: "Basic Info", description: "Deployment details", icon: User },
-  {
-    id: 1,
-    title: "Configuration",
-    description: "Service configuration",
-    icon: Settings,
-  },
-  { id: 2, title: "Review", description: "Review settings", icon: Eye },
-  { id: 3, title: "Bidding", description: "Request bids", icon: DollarSign },
-  { id: 4, title: "Deploy", description: "Deploy application", icon: Play },
-];
+// Dynamic steps based on selected method
+const getSteps = (method: "bidding" | "direct-accept" | "select-provider" | null) => {
+  const baseSteps = [
+    { id: 0, title: "Basic Info", description: "Deployment details", icon: User },
+    {
+      id: 1,
+      title: "Configuration",
+      description: "Service configuration",
+      icon: Settings,
+    },
+    { id: 2, title: "Review", description: "Review settings", icon: Eye },
+    {
+      id: 3,
+      title: "Method",
+      description: "Choose deployment method",
+      icon: DollarSign,
+    },
+  ];
+
+  if (method === "bidding") {
+    return [
+      ...baseSteps,
+      { id: 4, title: "Bidding", description: "Request bids", icon: DollarSign },
+      { id: 5, title: "Deploy", description: "Deploy application", icon: Play },
+    ];
+  } else if (method === "direct-accept") {
+    return [
+      ...baseSteps,
+      {
+        id: 4,
+        title: "Direct Accept",
+        description: "Select provider",
+        icon: DollarSign,
+      },
+      { id: 5, title: "Deploy", description: "Deploy application", icon: Play },
+    ];
+  } else if (method === "select-provider") {
+    return [
+      ...baseSteps,
+      {
+        id: 4,
+        title: "Select Provider",
+        description: "Choose provider",
+        icon: DollarSign,
+      },
+      { id: 5, title: "Deploy", description: "Deploy application", icon: Play },
+    ];
+  }
+
+  return baseSteps;
+};
 
 function DeployPageContent() {
   const router = useRouter();
@@ -92,6 +134,11 @@ function DeployPageContent() {
   const [totalStorage, setTotalStorage] = useState(0);
   const [estimatedPrice, setEstimatedPrice] = useState(0);
 
+  // Deployment method state
+  const [deploymentMethod, setDeploymentMethod] = useState<
+    "bidding" | "direct-accept" | "select-provider" | null
+  >(null);
+
   // Bidding state
   const [isBidAccepted, setIsBidAccepted] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
@@ -99,6 +146,10 @@ function DeployPageContent() {
   const [isEditingBid, setIsEditingBid] = useState(false);
   const [selectedBid] = useState<string>("");
   const [bids, setBids] = useState<any[]>([]);
+
+  // Direct Accept state
+  const [availableProviders, setAvailableProviders] = useState<any[]>([]);
+  const [favouriteProviders, setFavouriteProviders] = useState<string[]>([]);
 
   // Validation errors
   const [errors, setErrors] = useState<string[]>([]);
@@ -123,6 +174,271 @@ function DeployPageContent() {
       }
     }
   }, [searchParams]);
+
+  // Mock available providers for Direct Accept
+  useEffect(() => {
+    const mockProviders = [
+      {
+        id: "provider-1",
+        name: "Provider Alpha",
+        region: "us-east-1",
+        rating: 4.8,
+        uptime: "99.9%",
+        activeDeployments: "1,247",
+        capacity: "87%",
+        responseTime: "< 5min",
+        successRate: "99.2%",
+        features: [
+          "High Performance",
+          "24/7 Support",
+          "Auto Scaling",
+          "Backup",
+          "DDoS Protection",
+        ],
+        availableResources: {
+          cpu: 128,
+          memory: 512,
+          storage: 10,
+          gpu: 8,
+        },
+        cpuUtilization: "45%",
+        memoryUtilization: "62%",
+        storageUtilization: "38%",
+        gpuUtilization: "23%",
+        price: "23.50",
+      },
+      {
+        id: "provider-2",
+        name: "Provider Beta",
+        region: "eu-west-1",
+        rating: 4.6,
+        uptime: "99.7%",
+        activeDeployments: "892",
+        capacity: "92%",
+        responseTime: "< 3min",
+        successRate: "98.8%",
+        features: [
+          "Cost Effective",
+          "Fast Deployment",
+          "Monitoring",
+          "SSL Certificate",
+        ],
+        availableResources: {
+          cpu: 96,
+          memory: 384,
+          storage: 8,
+          gpu: 4,
+        },
+        cpuUtilization: "58%",
+        memoryUtilization: "71%",
+        storageUtilization: "45%",
+        gpuUtilization: "35%",
+        price: "20.75",
+      },
+      {
+        id: "provider-3",
+        name: "Provider Gamma",
+        region: "asia-pacific",
+        rating: 4.9,
+        uptime: "99.95%",
+        activeDeployments: "2,156",
+        capacity: "78%",
+        responseTime: "< 2min",
+        successRate: "99.5%",
+        features: [
+          "Enterprise Grade",
+          "Global CDN",
+          "DDoS Protection",
+          "SSL Certificate",
+          "Load Balancing",
+        ],
+        availableResources: {
+          cpu: 256,
+          memory: 1024,
+          storage: 20,
+          gpu: 16,
+        },
+        cpuUtilization: "32%",
+        memoryUtilization: "48%",
+        storageUtilization: "25%",
+        gpuUtilization: "15%",
+        price: "26.00",
+      },
+      {
+        id: "provider-4",
+        name: "Provider Delta",
+        region: "us-west-2",
+        rating: 4.7,
+        uptime: "99.8%",
+        activeDeployments: "1,543",
+        capacity: "83%",
+        responseTime: "< 4min",
+        successRate: "99.1%",
+        features: [
+          "GPU Accelerated",
+          "Low Latency",
+          "Auto Backup",
+          "24/7 Support",
+        ],
+        availableResources: {
+          cpu: 192,
+          memory: 768,
+          storage: 15,
+          gpu: 12,
+        },
+        cpuUtilization: "52%",
+        memoryUtilization: "65%",
+        storageUtilization: "42%",
+        gpuUtilization: "28%",
+        price: "24.25",
+      },
+      {
+        id: "provider-5",
+        name: "Provider Epsilon",
+        region: "ap-southeast-1",
+        rating: 4.5,
+        uptime: "99.6%",
+        activeDeployments: "654",
+        capacity: "91%",
+        responseTime: "< 6min",
+        successRate: "98.5%",
+        features: [
+          "Budget Friendly",
+          "Quick Setup",
+          "Basic Monitoring",
+          "Email Support",
+        ],
+        availableResources: {
+          cpu: 64,
+          memory: 256,
+          storage: 5,
+          gpu: 2,
+        },
+        cpuUtilization: "68%",
+        memoryUtilization: "75%",
+        storageUtilization: "55%",
+        gpuUtilization: "40%",
+        price: "18.90",
+      },
+      {
+        id: "provider-6",
+        name: "Provider Zeta",
+        region: "eu-central-1",
+        rating: 4.85,
+        uptime: "99.92%",
+        activeDeployments: "1,876",
+        capacity: "79%",
+        responseTime: "< 3min",
+        successRate: "99.3%",
+        features: [
+          "Premium SLA",
+          "Multi-Region",
+          "Advanced Security",
+          "Dedicated Support",
+          "Custom Configuration",
+        ],
+        availableResources: {
+          cpu: 320,
+          memory: 1280,
+          storage: 25,
+          gpu: 20,
+        },
+        cpuUtilization: "38%",
+        memoryUtilization: "55%",
+        storageUtilization: "30%",
+        gpuUtilization: "18%",
+        price: "29.50",
+      },
+      {
+        id: "provider-7",
+        name: "Provider Eta",
+        region: "ca-central-1",
+        rating: 4.4,
+        uptime: "99.5%",
+        activeDeployments: "432",
+        capacity: "88%",
+        responseTime: "< 5min",
+        successRate: "98.2%",
+        features: [
+          "Green Energy",
+          "Privacy Focused",
+          "Compliance Ready",
+        ],
+        availableResources: {
+          cpu: 80,
+          memory: 320,
+          storage: 6,
+          gpu: 3,
+        },
+        cpuUtilization: "61%",
+        memoryUtilization: "69%",
+        storageUtilization: "48%",
+        gpuUtilization: "33%",
+        price: "21.40",
+      },
+      {
+        id: "provider-8",
+        name: "Provider Theta",
+        region: "sa-east-1",
+        rating: 4.75,
+        uptime: "99.85%",
+        activeDeployments: "987",
+        capacity: "82%",
+        responseTime: "< 4min",
+        successRate: "99.0%",
+        features: [
+          "Latin America Focus",
+          "Local Support",
+          "Fast Regional Network",
+          "Flexible Pricing",
+        ],
+        availableResources: {
+          cpu: 160,
+          memory: 640,
+          storage: 12,
+          gpu: 6,
+        },
+        cpuUtilization: "49%",
+        memoryUtilization: "58%",
+        storageUtilization: "35%",
+        gpuUtilization: "25%",
+        price: "22.80",
+      },
+    ];
+
+    // Filter providers that meet requirements (simplified - check if resources are available)
+    // If no resources specified yet, show all providers (for testing/initial state)
+    const filteredProviders = mockProviders.filter((provider) => {
+      // If resources are 0 or not set, show all providers (only filter by price)
+      if (totalCpu === 0 && totalMemory === 0) {
+        return parseFloat(provider.price) <= parseFloat(maxPrice || "1000");
+      }
+      
+      // Check if provider meets resource requirements and price constraint
+      const meetsResources =
+        provider.availableResources.cpu >= totalCpu &&
+        provider.availableResources.memory >= totalMemory;
+      const meetsPrice =
+        parseFloat(provider.price) <= parseFloat(maxPrice || "1000");
+      
+      return meetsResources && meetsPrice;
+    });
+
+    // If no providers match strict requirements, show all providers (relaxed mode for testing)
+    // This ensures we always have providers to display
+    if (filteredProviders.length === 0 && mockProviders.length > 0) {
+      // Fallback: show all providers that meet price requirement
+      const fallbackProviders = mockProviders.filter(
+        (provider) =>
+          parseFloat(provider.price) <= parseFloat(maxPrice || "1000"),
+      );
+      setAvailableProviders(
+        fallbackProviders.length > 0 ? fallbackProviders : mockProviders,
+      );
+    } else {
+      setAvailableProviders(filteredProviders);
+    }
+  }, [totalCpu, totalMemory, totalStorage, maxPrice]);
 
   // Mock bids for testing
   useEffect(() => {
@@ -502,40 +818,53 @@ function DeployPageContent() {
       setErrors([]);
     }
 
-    // Validate Bidding step
+    // Validate Method Selection step
     if (currentStep === 3) {
+      if (!deploymentMethod) {
+        setErrors(["Please select a deployment method"]);
+        return;
+      }
+      setErrors([]);
+    }
+
+    // Validate Bidding step
+    if (currentStep === 4 && deploymentMethod === "bidding") {
       const validationErrors: string[] = [];
 
-      // Check if any bids are available
       if (!bids || bids.length === 0) {
         validationErrors.push(
           "No provider bids available. Please request bids first.",
         );
         setErrors(validationErrors);
-
         return;
       }
 
-      // Check if a bid is selected
       if (!selectedProvider || selectedProvider.trim() === "") {
         validationErrors.push("Please select a provider bid to continue");
         setErrors(validationErrors);
-
         return;
       }
 
-      // Clear errors if validation passes
       setErrors([]);
     }
 
-    // Validate Review step - auto request bids when going to Bidding step
-    if (currentStep === 2) {
-      // Auto request bids when moving from Review to Bidding
-      if (bids.length === 0) {
-        // Simulate requesting bids
-        // Bids will be set by the mock useEffect
+    // Validate Direct Accept step
+    if (currentStep === 4 && deploymentMethod === "direct-accept") {
+      const validationErrors: string[] = [];
+
+      if (!availableProviders || availableProviders.length === 0) {
+        validationErrors.push(
+          "No providers available. Please adjust your requirements.",
+        );
+        setErrors(validationErrors);
+        return;
       }
+
+      // No need to select provider - all available providers will accept
+      setErrors([]);
     }
+
+    const STEPS = getSteps(deploymentMethod);
 
     if (currentStep < STEPS.length - 1) {
       setCurrentStep(currentStep + 1);
@@ -543,14 +872,24 @@ function DeployPageContent() {
   };
 
   const handlePrevStep = () => {
-    // Don't allow going back from Bidding step (step 3) to Configuration step (step 1)
-    if (currentStep === 3) {
-      return; // Block going back from Bidding to Configuration
+    const STEPS = getSteps(deploymentMethod);
+
+    // Don't allow going back from Method Selection if method is already selected
+    if (currentStep === 3 && deploymentMethod) {
+      // Allow going back but reset method
+      setDeploymentMethod(null);
+      setCurrentStep(currentStep - 1);
+      return;
     }
 
-    // Don't allow going back from Deploy step (step 4) to Bidding step (step 3)
+    // Don't allow going back from Bidding/Direct Accept step
     if (currentStep === 4) {
-      return; // Block going back from Deploy to Bidding
+      return;
+    }
+
+    // Don't allow going back from Deploy step
+    if (currentStep === STEPS.length - 1) {
+      return;
     }
 
     if (currentStep > 0) {
@@ -719,42 +1058,118 @@ function DeployPageContent() {
 
       case 3:
         return (
-          <BiddingStep
-            bids={bids}
-            editedBidPrice={bidPrice}
-            estimatedPrice={estimatedPrice.toString()}
-            favouriteProviders={[]}
-            isBidAccepted={isBidAccepted}
-            isEditingBidPrice={isEditingBid}
-            isSubmitting={false}
-            maxPrice={maxPrice}
-            selectedBid={selectedProvider || ""}
-            selectedRegion="any"
-            services={services}
-            totalCpu={totalCpu.toString()}
-            totalMemory={totalMemory.toString()}
-            totalStorage={totalStorage.toString()}
-            validationErrors={errors}
-            onAcceptBid={() => {}}
-            onCancelBidPriceEdit={() => setIsEditingBid(false)}
-            onEditBidPrice={() => setIsEditingBid(true)}
-            onEditedBidPriceChange={handleBidPriceChange}
-            onEstimatedPriceClick={() => {}}
-            onRequestBids={() => {}}
-            onSaveBidPrice={() => setIsEditingBid(false)}
-            onSelectBid={(bidId) => {
-              setSelectedProvider(bidId);
-              setIsBidAccepted(true);
+          <MethodSelectionStep
+            selectedMethod={deploymentMethod}
+            onSelectMethod={(method) => {
+              setDeploymentMethod(method);
+              // Reset selected provider when changing method
+              if (method !== "select-provider" && method !== "bidding") {
+                setSelectedProvider(null);
+              }
               if (errors.length > 0) {
                 setErrors([]);
               }
             }}
-            onToggleFavouriteProvider={() => {}}
+            maxPrice={maxPrice}
+            totalCpu={totalCpu.toString()}
+            totalMemory={totalMemory.toString()}
+            totalStorage={totalStorage.toString()}
           />
         );
 
       case 4:
-        return <DeployStep isSubmitting={false} onDeploy={() => {}} />;
+        if (deploymentMethod === "bidding") {
+          return (
+            <BiddingStep
+              bids={bids}
+              editedBidPrice={bidPrice}
+              estimatedPrice={estimatedPrice.toString()}
+              favouriteProviders={favouriteProviders}
+              isBidAccepted={isBidAccepted}
+              isEditingBidPrice={isEditingBid}
+              isSubmitting={false}
+              maxPrice={maxPrice}
+              selectedBid={selectedProvider || ""}
+              selectedRegion="any"
+              services={services}
+              totalCpu={totalCpu.toString()}
+              totalMemory={totalMemory.toString()}
+              totalStorage={totalStorage.toString()}
+              validationErrors={errors}
+              onAcceptBid={() => {}}
+              onCancelBidPriceEdit={() => setIsEditingBid(false)}
+              onEditBidPrice={() => setIsEditingBid(true)}
+              onEditedBidPriceChange={handleBidPriceChange}
+              onEstimatedPriceClick={() => {}}
+              onRequestBids={() => {}}
+              onSaveBidPrice={() => setIsEditingBid(false)}
+              onSelectBid={(bidId) => {
+                setSelectedProvider(bidId);
+                setIsBidAccepted(true);
+                if (errors.length > 0) {
+                  setErrors([]);
+                }
+              }}
+              onToggleFavouriteProvider={(providerId) => {
+                setFavouriteProviders((prev) =>
+                  prev.includes(providerId)
+                    ? prev.filter((id) => id !== providerId)
+                    : [...prev, providerId],
+                );
+              }}
+            />
+          );
+        } else if (deploymentMethod === "direct-accept") {
+          return (
+            <DirectAcceptStep
+              providers={availableProviders}
+              favouriteProviders={favouriteProviders}
+              validationErrors={errors}
+              onToggleFavouriteProvider={(providerId) => {
+                setFavouriteProviders((prev) =>
+                  prev.includes(providerId)
+                    ? prev.filter((id) => id !== providerId)
+                    : [...prev, providerId],
+                );
+              }}
+            />
+          );
+        } else if (deploymentMethod === "select-provider") {
+          return (
+            <SelectProviderStep
+              providers={availableProviders}
+              selectedProvider={selectedProvider}
+              favouriteProviders={favouriteProviders}
+              marketplaceProviders={availableProviders} // All providers available in marketplace
+              validationErrors={errors}
+              onSelectProvider={(providerId) => {
+                setSelectedProvider(providerId);
+                if (errors.length > 0) {
+                  setErrors([]);
+                }
+              }}
+              onToggleFavouriteProvider={(providerId) => {
+                setFavouriteProviders((prev) =>
+                  prev.includes(providerId)
+                    ? prev.filter((id) => id !== providerId)
+                    : [...prev, providerId],
+                );
+              }}
+            />
+          );
+        }
+        return null;
+
+      case 5:
+        return (
+          <DeployStep
+            isSubmitting={false}
+            onDeploy={() => {}}
+            deploymentMethod={deploymentMethod}
+            selectedProvider={selectedProvider}
+            availableProviders={availableProviders}
+          />
+        );
 
       default:
         return null;
@@ -763,17 +1178,53 @@ function DeployPageContent() {
 
   // Check if Previous button should be disabled
   const isPrevDisabled = () => {
-    // Disable Previous button from Bidding step (step 3) and Deploy step (step 4)
-    return currentStep === 3 || currentStep === 4;
+    const STEPS = getSteps(deploymentMethod);
+
+    // Disable from Method Selection if method is selected
+    if (currentStep === 3 && deploymentMethod) {
+      return false; // Allow going back to reset method
+    }
+
+    // Disable from Provider Selection (Bidding/Direct Accept)
+    if (currentStep === 4) {
+      return true;
+    }
+
+    // Disable from Deploy step
+    if (currentStep === STEPS.length - 1) {
+      return true;
+    }
+
+    return false;
   };
 
   // Check if Next button should be disabled
   const isNextDisabled = () => {
-    // Bidding step - disable if no bids or no selection
+    // Method Selection step - disable if no method selected
     if (currentStep === 3) {
+      return !deploymentMethod;
+    }
+
+    // Bidding step - disable if no bids or no selection
+    if (currentStep === 4 && deploymentMethod === "bidding") {
       return (
         !bids ||
         bids.length === 0 ||
+        !selectedProvider ||
+        selectedProvider.trim() === ""
+      );
+    }
+
+    // Direct Accept step - disable only if no providers available
+    if (currentStep === 4 && deploymentMethod === "direct-accept") {
+      return !availableProviders || availableProviders.length === 0;
+    }
+
+    // Select Provider step - disable if no providers or no selection
+    if (currentStep === 4 && deploymentMethod === "select-provider") {
+      return (
+        !availableProviders ||
+        availableProviders.length === 0 ||
         !selectedProvider ||
         selectedProvider.trim() === ""
       );
@@ -845,7 +1296,7 @@ function DeployPageContent() {
         <div className="mb-8">
           <ProgressIndicator
             currentTab={currentStep}
-            tabs={STEPS.map((step) => ({
+            tabs={getSteps(deploymentMethod).map((step) => ({
               id: step.id.toString(),
               title: step.title,
               icon: step.icon,
@@ -875,7 +1326,7 @@ function DeployPageContent() {
                 </Button>
 
                 <div className="flex gap-4">
-                  {currentStep === STEPS.length - 1 ? (
+                  {currentStep === getSteps(deploymentMethod).length - 1 ? (
                     <Button
                       color="success"
                       endContent={<CheckCircle size={20} />}

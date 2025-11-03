@@ -16,11 +16,22 @@ import {
   Server,
   Database,
   Globe,
+  Users,
+  Send,
+  Hourglass,
 } from "lucide-react";
 
 interface DeployStepProps {
   isSubmitting: boolean;
   onDeploy: () => void;
+  deploymentMethod?: "bidding" | "direct-accept" | "select-provider" | null;
+  selectedProvider?: string | null;
+  availableProviders?: Array<{
+    id: string;
+    name: string;
+    region: string;
+    price: string;
+  }>;
 }
 
 type DeploymentStatus =
@@ -30,7 +41,10 @@ type DeploymentStatus =
   | "building"
   | "deploying"
   | "completed"
-  | "failed";
+  | "failed"
+  | "waiting-provider" // For select-provider: waiting for provider to accept
+  | "provider-accepted" // Provider accepted, now deploying
+  | "provider-timeout"; // Provider didn't accept within timeout
 
 interface DeploymentLog {
   timestamp: string;
@@ -50,6 +64,9 @@ interface DeploymentStep {
 export default function DeployStep({
   isSubmitting,
   onDeploy,
+  deploymentMethod = null,
+  selectedProvider = null,
+  availableProviders = [],
 }: DeployStepProps) {
   const [deploymentStatus, setDeploymentStatus] =
     useState<DeploymentStatus>("preparing");
@@ -57,6 +74,21 @@ export default function DeployStep({
   const [logs, setLogs] = useState<DeploymentLog[]>([]);
   const [deploymentUrl, setDeploymentUrl] = useState<string>("");
   const [isDeploying, setIsDeploying] = useState(true);
+  
+  // For Direct Accept: track provider acceptance status
+  const [providerStatuses, setProviderStatuses] = useState<
+    Array<{
+      id: string;
+      name: string;
+      status: "pending" | "accepted" | "rejected";
+      acceptedAt?: string;
+    }>
+  >([]);
+
+  // For Select Provider: track single provider acceptance
+  const [waitingStartTime, setWaitingStartTime] = useState<number | null>(null);
+  const [timeRemaining, setTimeRemaining] = useState<number>(1 * 60 * 1000); // 1 minute in ms
+  const [selectedProviderAccepted, setSelectedProviderAccepted] = useState(false);
   const [deploymentSteps, setDeploymentSteps] = useState<DeploymentStep[]>([
     {
       id: "preparing",
@@ -68,24 +100,42 @@ export default function DeployStep({
     },
     {
       id: "pulling",
-      name: "Pulling Images",
-      description: "Downloading Docker images",
-      icon: Download,
+      name:
+        deploymentMethod === "direct-accept"
+          ? "Sending Order to Providers"
+          : "Pulling Images",
+      description:
+        deploymentMethod === "direct-accept"
+          ? "Submitting deployment order to eligible providers"
+          : "Downloading Docker images",
+      icon: deploymentMethod === "direct-accept" ? Send : Download,
       status: "pending",
       progress: 0,
     },
     {
       id: "building",
-      name: "Building Containers",
-      description: "Creating application containers",
-      icon: Database,
+      name:
+        deploymentMethod === "direct-accept"
+          ? "Waiting for Provider Responses"
+          : "Building Containers",
+      description:
+        deploymentMethod === "direct-accept"
+          ? "Waiting for providers to accept or decline the order"
+          : "Creating application containers",
+      icon: deploymentMethod === "direct-accept" ? Users : Database,
       status: "pending",
       progress: 0,
     },
     {
       id: "deploying",
-      name: "Deploying Application",
-      description: "Launching on provider infrastructure",
+      name:
+        deploymentMethod === "direct-accept"
+          ? "Processing Accepted Orders"
+          : "Deploying Application",
+      description:
+        deploymentMethod === "direct-accept"
+          ? "Processing and deploying to providers that accepted"
+          : "Launching on provider infrastructure",
       icon: Globe,
       status: "pending",
       progress: 0,
@@ -94,8 +144,96 @@ export default function DeployStep({
 
   // Auto-start deployment when component mounts
   useEffect(() => {
-    simulateDeployment();
-  }, []);
+    // Update steps based on deployment method
+    if (deploymentMethod === "direct-accept") {
+      setDeploymentSteps([
+        {
+          id: "preparing",
+          name: "Preparing Order",
+          description: "Preparing deployment order",
+          icon: Server,
+          status: "pending",
+          progress: 0,
+        },
+        {
+          id: "pulling",
+          name: "Sending Order to Providers",
+          description: "Submitting deployment order to eligible providers",
+          icon: Send,
+          status: "pending",
+          progress: 0,
+        },
+        {
+          id: "building",
+          name: "Waiting for Provider Responses",
+          description: "Waiting for providers to accept or decline the order",
+          icon: Users,
+          status: "pending",
+          progress: 0,
+        },
+        {
+          id: "deploying",
+          name: "Processing Accepted Orders",
+          description: "Processing and deploying to providers that accepted",
+          icon: Globe,
+          status: "pending",
+          progress: 0,
+        },
+      ]);
+    } else if (deploymentMethod === "select-provider") {
+      setDeploymentSteps([
+        {
+          id: "preparing",
+          name: "Sending Request",
+          description: "Sending deployment request to selected provider",
+          icon: Send,
+          status: "pending",
+          progress: 0,
+        },
+        {
+          id: "pulling",
+          name: "Waiting for Provider Acceptance",
+          description: "Waiting for provider to accept the deployment request",
+          icon: Clock,
+          status: "pending",
+          progress: 0,
+        },
+        {
+          id: "building",
+          name: "Preparing Environment",
+          description: "Setting up deployment infrastructure",
+          icon: Server,
+          status: "pending",
+          progress: 0,
+        },
+        {
+          id: "deploying",
+          name: "Deploying Application",
+          description: "Launching on provider infrastructure",
+          icon: Globe,
+          status: "pending",
+          progress: 0,
+        },
+      ]);
+    }
+    
+    if (deploymentMethod === "direct-accept" && availableProviders.length > 0) {
+      // Initialize provider statuses for Direct Accept
+      setProviderStatuses(
+        availableProviders.map((p) => ({
+          id: p.id,
+          name: p.name,
+          status: "pending" as const,
+        })),
+      );
+      simulateDirectAcceptDeployment();
+    } else if (deploymentMethod === "select-provider" && selectedProvider) {
+      simulateSelectProviderDeployment();
+    } else if (deploymentMethod !== "direct-accept" && deploymentMethod !== "select-provider") {
+      simulateDeployment();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deploymentMethod, availableProviders.length, selectedProvider]);
 
   const addLog = (level: DeploymentLog["level"], message: string) => {
     const newLog: DeploymentLog = {
@@ -185,6 +323,186 @@ export default function DeployStep({
     setIsDeploying(false);
   };
 
+  const simulateDirectAcceptDeployment = async () => {
+    setIsDeploying(true);
+    setDeploymentStatus("preparing");
+    setDeploymentProgress(0);
+    setLogs([]);
+
+    // Step 1: Preparing & Submitting Order (quick, no visible progress)
+    addLog("info", "📋 Preparing deployment order...");
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    addLog("success", "✅ Deployment order prepared successfully");
+
+    // Step 2: Sending to Providers (quick, no visible progress)
+    addLog(
+      "info",
+      `📨 Sending deployment order to ${availableProviders.length} eligible providers...`,
+    );
+    
+    // Simulate sending to each provider quickly
+    for (let i = 0; i < availableProviders.length; i++) {
+      const provider = availableProviders[i];
+      addLog("info", `📤 Order sent to ${provider.name} (${provider.region})`);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+    
+    addLog(
+      "success",
+      `✅ Deployment order sent to all ${availableProviders.length} providers successfully`,
+    );
+
+    // Mark as completed - order sent, now waiting for provider responses
+    setDeploymentStatus("completed");
+    setDeploymentProgress(100);
+    addLog("success", "🎉 Deployment order submitted successfully!");
+    addLog(
+      "info",
+      `⏳ Waiting for ${availableProviders.length} provider${availableProviders.length !== 1 ? "s" : ""} to review and accept your order...`,
+    );
+
+    setIsDeploying(false);
+  };
+
+  const simulateSelectProviderDeployment = async () => {
+    setIsDeploying(true);
+    setDeploymentStatus("preparing");
+    setDeploymentProgress(0);
+    setLogs([]);
+    setWaitingStartTime(Date.now());
+    setTimeRemaining(1 * 60 * 1000); // 1 minute
+    setSelectedProviderAccepted(false);
+
+    // Step 1: Send request to provider
+    updateStepStatus("preparing", "active", 0);
+    addLog("info", "📤 Sending deployment request to selected provider...");
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    updateStepStatus("preparing", "active", 50);
+    const selectedProviderData = availableProviders?.find(
+      (p) => p.id === selectedProvider,
+    ) || { id: selectedProvider || "", name: "Selected Provider", region: "Unknown" };
+    if (selectedProviderData) {
+      addLog(
+        "info",
+        `📨 Request sent to ${selectedProviderData.name} (${selectedProviderData.region})...`,
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    updateStepStatus("preparing", "completed", 100);
+    addLog("success", "✅ Deployment request sent successfully");
+    setDeploymentProgress(25);
+
+    // Step 2: Wait for provider acceptance (with timeout)
+    updateStepStatus("pulling", "active", 0);
+    setDeploymentStatus("waiting-provider");
+    addLog("info", "⏳ Waiting for provider to accept the deployment request...");
+    addLog(
+      "info",
+      "⏰ You have 1 minute. The request will expire if not accepted.",
+    );
+
+    // Simulate provider acceptance after a delay (10-50 seconds)
+    // The countdown timer is handled by the useEffect hook
+    const acceptDelay = 10000 + Math.random() * 40000; // 10-50 seconds
+    const timeoutId = setTimeout(() => {
+      // 80% chance of acceptance
+      if (Math.random() > 0.2) {
+        setSelectedProviderAccepted(true);
+        handleProviderAcceptance(selectedProviderData);
+      }
+    }, acceptDelay);
+
+    // Store timeout ID for cleanup if needed
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  };
+
+  const handleProviderAcceptance = async (provider: any) => {
+    setSelectedProviderAccepted(true);
+    setDeploymentStatus("provider-accepted");
+    addLog("success", `✅ ${provider?.name || "Provider"} accepted the deployment request!`);
+    addLog("info", "🚀 Starting deployment process...");
+
+    updateStepStatus("pulling", "completed", 100);
+    setDeploymentProgress(50);
+
+    // Step 3: Prepare Environment
+    updateStepStatus("building", "active", 0);
+    setDeploymentStatus("preparing");
+    addLog("info", "📋 Preparing deployment environment...");
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    updateStepStatus("building", "active", 50);
+    addLog("info", "⚙️ Configuring resources...");
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    updateStepStatus("building", "completed", 100);
+    addLog("success", "✅ Environment prepared successfully");
+    setDeploymentProgress(75);
+
+    // Step 4: Deploy
+    updateStepStatus("deploying", "active", 0);
+    setDeploymentStatus("deploying");
+    addLog("info", "🌐 Deploying to provider infrastructure...");
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    updateStepStatus("deploying", "active", 80);
+    addLog("info", "🔗 Establishing connections...");
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    updateStepStatus("deploying", "completed", 100);
+    addLog("success", "✅ Application deployed successfully");
+    setDeploymentProgress(100);
+
+    // Completed
+    setDeploymentStatus("completed");
+    const appUrl = "https://your-app.provider.com";
+    setDeploymentUrl(appUrl);
+    addLog("success", "🎉 Deployment completed successfully!");
+    addLog("info", "🌍 Your application is now live and accessible");
+    addLog("info", "🔗 Access your app at: " + appUrl);
+
+    setIsDeploying(false);
+  };
+
+  const handleProviderTimeout = () => {
+    setDeploymentStatus("provider-timeout");
+    setDeploymentProgress(25);
+    addLog("error", "⏰ Request timeout: Provider did not accept within 1 minute");
+    addLog(
+      "info",
+      "💡 You can try again or select a different provider",
+    );
+    setIsDeploying(false);
+  };
+
+  // Countdown timer for select-provider
+  useEffect(() => {
+    if (
+      deploymentMethod === "select-provider" &&
+      deploymentStatus === "waiting-provider" &&
+      timeRemaining > 0 &&
+      !selectedProviderAccepted
+    ) {
+      const interval = setInterval(() => {
+        setTimeRemaining((prev) => {
+          if (prev <= 1000) {
+            if (!selectedProviderAccepted) {
+              handleProviderTimeout();
+            }
+            return 0;
+          }
+          return prev - 1000;
+        });
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [deploymentMethod, deploymentStatus, timeRemaining, selectedProviderAccepted]);
+
+  const formatTimeRemaining = (ms: number) => {
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
+
   const getStatusIcon = () => {
     switch (deploymentStatus) {
       case "idle":
@@ -197,7 +515,12 @@ export default function DeployStep({
       case "completed":
         return <CheckCircle className="text-green-500" size={24} />;
       case "failed":
-        return <AlertCircle className="text-red-500" size={24} />;
+      case "provider-timeout":
+        return <XCircle className="text-red-500" size={24} />;
+      case "waiting-provider":
+        return <Clock className="text-warning animate-pulse" size={24} />;
+      case "provider-accepted":
+        return <CheckCircle className="text-success animate-pulse" size={24} />;
       default:
         return <Clock className="text-gray-500" size={24} />;
     }
@@ -208,7 +531,12 @@ export default function DeployStep({
       case "completed":
         return "success";
       case "failed":
+      case "provider-timeout":
         return "danger";
+      case "waiting-provider":
+        return "warning";
+      case "provider-accepted":
+        return "success";
       case "preparing":
       case "pulling":
       case "building":
@@ -231,6 +559,12 @@ export default function DeployStep({
         return "Building Containers";
       case "deploying":
         return "Deploying Application";
+      case "waiting-provider":
+        return "Waiting for Provider Acceptance";
+      case "provider-accepted":
+        return "Provider Accepted - Deploying";
+      case "provider-timeout":
+        return "Request Timeout";
       case "completed":
         return "Deployment Complete";
       case "failed":
@@ -265,6 +599,20 @@ export default function DeployStep({
     return <IconComponent className={iconClass} size={20} />;
   };
 
+  // Calculate provider counts for Direct Accept
+  const acceptedProviders =
+    deploymentMethod === "direct-accept"
+      ? providerStatuses.filter((p) => p.status === "accepted")
+      : [];
+  const pendingProviders =
+    deploymentMethod === "direct-accept"
+      ? providerStatuses.filter((p) => p.status === "pending")
+      : [];
+  const rejectedProviders =
+    deploymentMethod === "direct-accept"
+      ? providerStatuses.filter((p) => p.status === "rejected")
+      : [];
+
   return (
     <div className="space-y-6">
       {/* Deployment Status Header */}
@@ -275,11 +623,29 @@ export default function DeployStep({
             <div>
               <h2 className="text-2xl font-bold">{getStatusText()}</h2>
               <p className="text-sm text-default-600">
-                {deploymentStatus === "idle"
-                  ? "Configure your deployment and launch your application"
-                  : deploymentStatus === "completed"
-                    ? "Your application is now live and running"
-                    : "Deploying your application to the cloud"}
+                {deploymentMethod === "direct-accept"
+                  ? deploymentStatus === "idle"
+                    ? "Submit your deployment order to eligible providers"
+                    : deploymentStatus === "completed"
+                      ? "Deployment order has been submitted. Waiting for providers to review and accept."
+                      : "Preparing deployment order..."
+                  : deploymentMethod === "select-provider"
+                    ? deploymentStatus === "waiting-provider"
+                      ? `Waiting for provider to accept. Time remaining: ${formatTimeRemaining(timeRemaining)}`
+                      : deploymentStatus === "provider-timeout"
+                        ? "Provider did not accept within 1 minute"
+                        : deploymentStatus === "provider-accepted"
+                          ? "Provider accepted! Starting deployment..."
+                          : deploymentStatus === "completed"
+                            ? "Your application is now live and running"
+                            : deploymentStatus === "idle"
+                              ? "Send deployment request to selected provider"
+                              : "Deploying your application"
+                    : deploymentStatus === "idle"
+                      ? "Configure your deployment and launch your application"
+                      : deploymentStatus === "completed"
+                        ? "Your application is now live and running"
+                        : "Deploying your application to the cloud"}
               </p>
             </div>
           </div>
@@ -288,34 +654,136 @@ export default function DeployStep({
               ? "Ready"
               : deploymentStatus === "completed"
                 ? "Success"
-                : deploymentStatus === "failed"
+                : deploymentStatus === "failed" || deploymentStatus === "provider-timeout"
                   ? "Failed"
-                  : "In Progress"}
+                  : deploymentStatus === "waiting-provider"
+                    ? "Waiting"
+                    : deploymentStatus === "provider-accepted"
+                      ? "Accepted"
+                      : "In Progress"}
           </Chip>
         </CardHeader>
         <CardBody className="space-y-6">
-          {/* Overall Progress */}
-          {deploymentStatus !== "idle" && (
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Overall Progress</span>
-                <span className="text-sm font-bold text-primary">
-                  {deploymentProgress}%
-                </span>
+          {/* Overall Progress - For Bidding and Select Provider (after acceptance) */}
+          {deploymentStatus !== "idle" &&
+            deploymentMethod !== "direct-accept" &&
+            deploymentStatus !== "waiting-provider" &&
+            deploymentStatus !== "provider-timeout" && (
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Overall Progress</span>
+                  <span className="text-sm font-bold text-primary">
+                    {deploymentProgress}%
+                  </span>
+                </div>
+                <Progress
+                  className="w-full h-3"
+                  color={
+                    deploymentStatus === "completed" ? "success" : "primary"
+                  }
+                  value={deploymentProgress}
+                />
               </div>
-              <Progress
-                className="w-full h-3"
-                color={deploymentStatus === "completed" ? "success" : "primary"}
-                value={deploymentProgress}
-              />
-            </div>
-          )}
+            )}
 
-          {/* Deployment Steps */}
-          {deploymentStatus !== "idle" && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Deployment Steps</h3>
-              <div className="grid gap-4">
+          {/* Direct Accept: Order Submitted Successfully */}
+          {deploymentMethod === "direct-accept" &&
+            deploymentStatus === "completed" && (
+              <div className="text-center py-6">
+                <div className="text-6xl mb-4">✅</div>
+                <h3 className="text-2xl font-semibold mb-2 text-success">
+                  Deployment Order Submitted Successfully!
+                </h3>
+                <p className="text-default-600 mb-4 max-w-md mx-auto">
+                  Your deployment order has been sent to{" "}
+                  {availableProviders.length} eligible provider
+                  {availableProviders.length !== 1 ? "s" : ""}. They are now
+                  reviewing your requirements and will respond soon.
+                </p>
+              </div>
+            )}
+
+          {/* Provider Status (Direct Accept only) */}
+          {deploymentMethod === "direct-accept" &&
+            providerStatuses.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Provider Responses</h3>
+                <div className="grid gap-3">
+                  {providerStatuses.map((provider) => (
+                    <div
+                      key={provider.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-white/50 border border-default-200"
+                    >
+                      <div className="flex items-center gap-3">
+                        {provider.status === "accepted" && (
+                          <CheckCircle className="text-success" size={20} />
+                        )}
+                        {provider.status === "pending" && (
+                          <Hourglass className="text-warning animate-pulse" size={20} />
+                        )}
+                        {provider.status === "rejected" && (
+                          <AlertCircle className="text-danger" size={20} />
+                        )}
+                        <div>
+                          <p className="font-semibold">{provider.name}</p>
+                          {provider.acceptedAt && (
+                            <p className="text-xs text-default-500">
+                              Accepted at {provider.acceptedAt}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <Chip
+                        color={
+                          provider.status === "accepted"
+                            ? "success"
+                            : provider.status === "rejected"
+                              ? "danger"
+                              : "warning"
+                        }
+                        size="sm"
+                        variant="flat"
+                      >
+                        {provider.status === "accepted"
+                          ? "Accepted"
+                          : provider.status === "rejected"
+                            ? "Declined"
+                            : "Waiting..."}
+                      </Chip>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="text-success" size={16} />
+                    <span>
+                      {acceptedProviders.length} Accepted
+                    </span>
+                  </div>
+                  {pendingProviders.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Hourglass className="text-warning" size={16} />
+                      <span>{pendingProviders.length} Pending</span>
+                    </div>
+                  )}
+                  {rejectedProviders.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="text-danger" size={16} />
+                      <span>{rejectedProviders.length} Declined</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+          {/* Deployment Steps - For Bidding and Select Provider (after acceptance) */}
+          {deploymentStatus !== "idle" &&
+            deploymentMethod !== "direct-accept" &&
+            deploymentStatus !== "waiting-provider" &&
+            deploymentStatus !== "provider-timeout" && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Deployment Steps</h3>
+                <div className="grid gap-4">
                 {deploymentSteps.map((step, index) => (
                   <div
                     key={step.id}
@@ -359,6 +827,87 @@ export default function DeployStep({
               </div>
             </div>
           )}
+
+          {/* Direct Accept: Waiting Message */}
+          {deploymentMethod === "direct-accept" &&
+            deploymentStatus === "completed" && (
+              <div className="bg-success/5 border border-success/20 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <Hourglass className="text-success animate-pulse" size={20} />
+                  <div>
+                    <h4 className="font-semibold text-success">
+                      Waiting for Provider Responses
+                    </h4>
+                    <p className="text-sm text-default-600 mt-1">
+                      Providers are reviewing your deployment order. You will be
+                      notified once they accept or decline. This may take a few
+                      minutes.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          {/* Select Provider: Waiting for Acceptance */}
+          {deploymentMethod === "select-provider" &&
+            deploymentStatus === "waiting-provider" && (
+              <div className="text-center py-6">
+                <Clock className="mx-auto mb-4 text-warning animate-pulse" size={48} />
+                <h3 className="text-2xl font-semibold mb-2 text-warning">
+                  Waiting for Provider Acceptance
+                </h3>
+                <div className="bg-warning/10 border border-warning/20 rounded-lg p-4 mb-4 max-w-md mx-auto">
+                  <div className="text-3xl font-bold text-warning mb-2">
+                    {formatTimeRemaining(timeRemaining)}
+                  </div>
+                  <p className="text-sm text-default-600">
+                    Time remaining before request expires
+                  </p>
+                </div>
+                <p className="text-default-600 mb-2">
+                  Your deployment request has been sent to the selected provider.
+                </p>
+                <p className="text-sm text-default-500">
+                  The provider has 1 minute to accept. Deployment will start
+                  automatically once accepted.
+                </p>
+              </div>
+            )}
+
+          {/* Select Provider: Timeout */}
+          {deploymentMethod === "select-provider" &&
+            deploymentStatus === "provider-timeout" && (
+              <div className="text-center py-6">
+                <XCircle className="mx-auto mb-4 text-danger" size={48} />
+                <h3 className="text-2xl font-semibold mb-2 text-danger">
+                  Request Timeout
+                </h3>
+                <p className="text-default-600 mb-4 max-w-md mx-auto">
+                  The provider did not accept your deployment request within 1
+                  minute. The request has expired.
+                </p>
+                <div className="flex gap-4 justify-center">
+                  <Button
+                    color="primary"
+                    startContent={<RefreshCw size={20} />}
+                    onClick={() => {
+                      setDeploymentStatus("preparing");
+                      setDeploymentProgress(0);
+                      setLogs([]);
+                      setWaitingStartTime(null);
+                      setTimeRemaining(1 * 60 * 1000);
+                      setSelectedProviderAccepted(false);
+                      setIsDeploying(true);
+                      setTimeout(() => {
+                        simulateSelectProviderDeployment();
+                      }, 100);
+                    }}
+                  >
+                    Try Again
+                  </Button>
+                </div>
+              </div>
+            )}
 
           {/* Action Buttons */}
 
@@ -433,6 +982,42 @@ export default function DeployStep({
               </div>
             </div>
           )}
+
+          {/* Direct Accept: Action Buttons */}
+          {deploymentMethod === "direct-accept" &&
+            deploymentStatus === "completed" && (
+              <div className="flex gap-4 justify-center pt-4">
+                <Button
+                  color="primary"
+                  startContent={<Download size={20} />}
+                  variant="bordered"
+                >
+                  Download Order Details
+                </Button>
+                <Button
+                  color="primary"
+                  startContent={<RefreshCw size={20} />}
+                  onClick={() => {
+                    setDeploymentStatus("preparing");
+                    setDeploymentProgress(0);
+                    setLogs([]);
+                    setProviderStatuses(
+                      availableProviders.map((p) => ({
+                        id: p.id,
+                        name: p.name,
+                        status: "pending" as const,
+                      })),
+                    );
+                    setIsDeploying(true);
+                    setTimeout(() => {
+                      simulateDirectAcceptDeployment();
+                    }, 100);
+                  }}
+                >
+                  Resubmit Order
+                </Button>
+              </div>
+            )}
         </CardBody>
       </Card>
 
