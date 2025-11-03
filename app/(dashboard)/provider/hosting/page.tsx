@@ -1,262 +1,375 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
-import { Input } from "@heroui/input";
-import { Chip } from "@heroui/chip";
-import { Select, SelectItem } from "@heroui/select";
-import {
-  Server,
-  Plus,
-  Search,
-  Play,
-  Square,
-  RefreshCw,
-  Eye,
-  Activity,
-  ArrowLeft,
-  Database,
-  HardDrive,
-  TrendingUp,
-} from "lucide-react";
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-} from "@heroui/modal";
-
-interface HostingInstance {
-  id: string;
-  name: string;
-  serviceType: "web" | "api" | "database" | "cache" | "other";
-  status: "running" | "stopped" | "starting" | "stopping" | "error";
-  image: string;
-  version: string;
-  domain?: string;
-  ports: Array<{
-    containerPort: number;
-    hostPort: number;
-    protocol: "tcp" | "udp";
-  }>;
-  resources: {
-    cpu: number;
-    memory: number; // GB
-    storage: number; // GB
-  };
-  user: {
-    address: string;
-    name?: string;
-  };
-  createdAt: string;
-  updatedAt: string;
-  uptime: number; // percentage
-}
+import { Server, Plus, ArrowLeft } from "lucide-react";
+import { Deployment, Service } from "@/components/dashboard/provider/hosting/types";
+import { mockDeployments } from "@/components/dashboard/provider/hosting/mockData";
+import StatisticsCards from "@/components/dashboard/provider/hosting/StatisticsCards";
+import Filters from "@/components/dashboard/provider/hosting/Filters";
+import DeploymentCard from "@/components/dashboard/provider/hosting/DeploymentCard";
+import EmptyState from "@/components/dashboard/provider/hosting/EmptyState";
+import DeploymentDetailModal from "@/components/dashboard/provider/hosting/DeploymentDetailModal";
+import ScaleModal from "@/components/dashboard/provider/hosting/ScaleModal";
+import DeleteModal from "@/components/dashboard/provider/hosting/DeleteModal";
 
 export default function ProviderHostingPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [serviceTypeFilter, setServiceTypeFilter] = useState<string>("all");
-  const [selectedInstance, setSelectedInstance] =
-    useState<HostingInstance | null>(null);
+  const [expandedDeployments, setExpandedDeployments] = useState<Set<string>>(
+    new Set(),
+  );
+  const [selectedDeployment, setSelectedDeployment] =
+    useState<Deployment | null>(null);
+  const [selectedService, setSelectedService] = useState<{
+    deployment: Deployment;
+    service: Service;
+  } | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isScaleOpen, setIsScaleOpen] = useState(false);
+  const [scaleTarget, setScaleTarget] = useState<{
+    deploymentId: string;
+    serviceId: string;
+    currentReplicas: number;
+  } | null>(null);
+  const [scaleValue, setScaleValue] = useState<number>(1);
+  const [nowTs, setNowTs] = useState<number>(0);
+  const [deployments, setDeployments] = useState<Deployment[]>(mockDeployments);
 
-  // Mock hosting instances
-  const [instances, setInstances] = useState<HostingInstance[]>([
-    {
-      id: "host-1",
-      name: "web-server-01",
-      serviceType: "web",
-      status: "running",
-      image: "nginx:latest",
-      version: "1.25.2",
-      domain: "web-server-01.subnet.example.com",
-      ports: [
-        { containerPort: 80, hostPort: 8080, protocol: "tcp" },
-        { containerPort: 443, hostPort: 8443, protocol: "tcp" },
-      ],
-      resources: {
-        cpu: 2,
-        memory: 4,
-        storage: 20,
-      },
-      user: {
-        address: "0x1234...5678",
-        name: "Alice",
-      },
-      createdAt: "2024-01-15T10:00:00Z",
-      updatedAt: "2024-01-20T14:30:00Z",
-      uptime: 99.5,
-    },
-    {
-      id: "host-2",
-      name: "api-backend-01",
-      serviceType: "api",
-      status: "running",
-      image: "node:20-alpine",
-      version: "20.10.0",
-      domain: "api-backend-01.subnet.example.com",
-      ports: [{ containerPort: 3000, hostPort: 3001, protocol: "tcp" }],
-      resources: {
-        cpu: 4,
-        memory: 8,
-        storage: 50,
-      },
-      user: {
-        address: "0xabcd...ef01",
-      },
-      createdAt: "2024-01-18T08:00:00Z",
-      updatedAt: "2024-01-20T15:00:00Z",
-      uptime: 98.2,
-    },
-    {
-      id: "host-3",
-      name: "redis-cache",
-      serviceType: "cache",
-      status: "stopped",
-      image: "redis:7-alpine",
-      version: "7.2.3",
-      ports: [{ containerPort: 6379, hostPort: 6379, protocol: "tcp" }],
-      resources: {
-        cpu: 1,
-        memory: 2,
-        storage: 10,
-      },
-      user: {
-        address: "0x5678...9012",
-      },
-      createdAt: "2024-01-10T12:00:00Z",
-      updatedAt: "2024-01-19T10:00:00Z",
-      uptime: 0,
-    },
-  ]);
+  // Clock tick for lease countdown - only on client side
+  useEffect(() => {
+    setNowTs(Date.now());
+    const id = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   // Calculate statistics
   const stats = {
-    total: instances.length,
-    running: instances.filter((i) => i.status === "running").length,
-    stopped: instances.filter((i) => i.status === "stopped").length,
-    totalCpu: instances.reduce((sum, i) => sum + i.resources.cpu, 0),
-    totalMemory: instances.reduce((sum, i) => sum + i.resources.memory, 0),
-    totalStorage: instances.reduce((sum, i) => sum + i.resources.storage, 0),
-    avgUptime:
-      instances.length > 0
-        ? instances.reduce((sum, i) => sum + i.uptime, 0) / instances.length
-        : 0,
+    total: deployments.length,
+    running: deployments.filter((d) => d.status === "running").length,
+    stopped: deployments.filter((d) => d.status === "stopped").length,
+    totalServices: deployments.reduce((sum, d) => sum + d.services.length, 0),
+    runningServices: deployments.reduce(
+      (sum, d) =>
+        sum + d.services.filter((s) => s.status === "running").length,
+      0,
+    ),
+    totalReplicas: deployments.reduce(
+      (sum, d) =>
+        sum + d.services.reduce((sSum, s) => sSum + s.replicasStatus.total, 0),
+      0,
+    ),
+    runningReplicas: deployments.reduce(
+      (sum, d) =>
+        sum +
+        d.services.reduce((sSum, s) => sSum + s.replicasStatus.running, 0),
+      0,
+    ),
+    totalCpu: deployments.reduce(
+      (sum, d) => sum + d.totalResources.cpu,
+      0,
+    ),
+    totalMemory: deployments.reduce(
+      (sum, d) => sum + d.totalResources.memory,
+      0,
+    ),
+    totalStorage: deployments.reduce(
+      (sum, d) => sum + d.totalResources.storage,
+      0,
+    ),
   };
 
-  // Filter instances
-  const filteredInstances = instances.filter((instance) => {
+  // Filter deployments
+  const filteredDeployments = deployments.filter((deployment) => {
     const matchesSearch =
-      instance.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      instance.user.address.toLowerCase().includes(searchQuery.toLowerCase());
+      deployment.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      deployment.application.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      deployment.user.address.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus =
-      statusFilter === "all" || instance.status === statusFilter;
-    const matchesType =
-      serviceTypeFilter === "all" || instance.serviceType === serviceTypeFilter;
+      statusFilter === "all" || deployment.status === statusFilter;
 
-    return matchesSearch && matchesStatus && matchesType;
+    return matchesSearch && matchesStatus;
   });
 
-  const handleViewDetails = (instance: HostingInstance) => {
-    setSelectedInstance(instance);
+  const toggleExpanded = (deploymentId: string) => {
+    setExpandedDeployments((prev) => {
+      const next = new Set(prev);
+      if (next.has(deploymentId)) {
+        next.delete(deploymentId);
+      } else {
+        next.add(deploymentId);
+      }
+      return next;
+    });
+  };
+
+  const handleViewDetails = (deployment: Deployment, service?: Service) => {
+    setSelectedDeployment(deployment);
+    if (service) {
+      setSelectedService({ deployment, service });
+    } else {
+      setSelectedService(null);
+    }
     setIsDetailOpen(true);
   };
 
-  const handleStart = (id: string) => {
-    setInstances((prev) =>
-      prev.map((inst) =>
-        inst.id === id ? { ...inst, status: "starting" as const } : inst,
+  const handleStartDeployment = (id: string) => {
+    setDeployments((prev) =>
+      prev.map((dep) =>
+        dep.id === id ? { ...dep, status: "starting" as const } : dep,
       ),
     );
-    // Simulate start
     setTimeout(() => {
-      setInstances((prev) =>
-        prev.map((inst) =>
-          inst.id === id
-            ? { ...inst, status: "running" as const, uptime: 100 }
-            : inst,
+      setDeployments((prev) =>
+        prev.map((dep) =>
+          dep.id === id
+            ? {
+                ...dep,
+                status: "running" as const,
+                services: dep.services.map((s) => ({
+                  ...s,
+                  status: "running" as const,
+                  uptime: 100,
+                })),
+              }
+            : dep,
         ),
       );
     }, 2000);
   };
 
-  const handleStop = (id: string) => {
-    setInstances((prev) =>
-      prev.map((inst) =>
-        inst.id === id ? { ...inst, status: "stopping" as const } : inst,
+  const handleStopDeployment = (id: string) => {
+    setDeployments((prev) =>
+      prev.map((dep) =>
+        dep.id === id ? { ...dep, status: "stopping" as const } : dep,
       ),
     );
-    // Simulate stop
     setTimeout(() => {
-      setInstances((prev) =>
-        prev.map((inst) =>
-          inst.id === id
-            ? { ...inst, status: "stopped" as const, uptime: 0 }
-            : inst,
+      setDeployments((prev) =>
+        prev.map((dep) =>
+          dep.id === id
+            ? {
+                ...dep,
+                status: "stopped" as const,
+                services: dep.services.map((s) => ({
+                  ...s,
+                  status: "stopped" as const,
+                  uptime: 0,
+                })),
+              }
+            : dep,
         ),
       );
     }, 2000);
   };
 
-  const handleRestart = (id: string) => {
-    setInstances((prev) =>
-      prev.map((inst) =>
-        inst.id === id ? { ...inst, status: "starting" as const } : inst,
+  const handleRestartDeployment = (id: string) => {
+    setDeployments((prev) =>
+      prev.map((dep) =>
+        dep.id === id ? { ...dep, status: "starting" as const } : dep,
       ),
     );
-    // Simulate restart
     setTimeout(() => {
-      setInstances((prev) =>
-        prev.map((inst) =>
-          inst.id === id ? { ...inst, status: "running" as const } : inst,
+      setDeployments((prev) =>
+        prev.map((dep) =>
+          dep.id === id
+            ? {
+                ...dep,
+                status: "running" as const,
+                services: dep.services.map((s) => ({
+                  ...s,
+                  status: "running" as const,
+                })),
+              }
+            : dep,
         ),
       );
     }, 2000);
   };
 
-  const handleDelete = (id: string) => {
-    setInstances((prev) => prev.filter((inst) => inst.id !== id));
+  const handleStartService = (deploymentId: string, serviceId: string) => {
+    setDeployments((prev) =>
+      prev.map((dep) =>
+        dep.id === deploymentId
+          ? {
+              ...dep,
+              services: dep.services.map((s) =>
+                s.id === serviceId
+                  ? { ...s, status: "starting" as const }
+                  : s,
+              ),
+            }
+          : dep,
+      ),
+    );
+    setTimeout(() => {
+      setDeployments((prev) =>
+        prev.map((dep) =>
+          dep.id === deploymentId
+            ? {
+                ...dep,
+                services: dep.services.map((s) =>
+                  s.id === serviceId
+                    ? { ...s, status: "running" as const, uptime: 100 }
+                    : s,
+                ),
+              }
+            : dep,
+        ),
+      );
+    }, 2000);
+  };
+
+  const handleStopService = (deploymentId: string, serviceId: string) => {
+    setDeployments((prev) =>
+      prev.map((dep) =>
+        dep.id === deploymentId
+          ? {
+              ...dep,
+              services: dep.services.map((s) =>
+                s.id === serviceId
+                  ? { ...s, status: "stopping" as const }
+                  : s,
+              ),
+            }
+          : dep,
+      ),
+    );
+    setTimeout(() => {
+      setDeployments((prev) =>
+        prev.map((dep) =>
+          dep.id === deploymentId
+            ? {
+                ...dep,
+                services: dep.services.map((s) =>
+                  s.id === serviceId
+                    ? { ...s, status: "stopped" as const, uptime: 0 }
+                    : s,
+                ),
+              }
+            : dep,
+        ),
+      );
+    }, 2000);
+  };
+
+  const handleDeleteDeployment = (id: string) => {
+    setDeployments((prev) => prev.filter((dep) => dep.id !== id));
     setIsDeleteOpen(false);
-    setSelectedInstance(null);
+    setSelectedDeployment(null);
   };
 
-  const getStatusColor = (status: HostingInstance["status"]) => {
-    switch (status) {
-      case "running":
-        return "success";
-      case "stopped":
-        return "default";
-      case "starting":
-      case "stopping":
-        return "warning";
-      case "error":
-        return "danger";
-      default:
-        return "default";
-    }
+  const handleScaleService = (
+    deploymentId: string,
+    serviceId: string,
+    currentReplicas: number,
+  ) => {
+    setScaleTarget({ deploymentId, serviceId, currentReplicas });
+    setScaleValue(currentReplicas);
+    setIsScaleOpen(true);
   };
 
-  const getServiceTypeLabel = (type: HostingInstance["serviceType"]) => {
-    switch (type) {
-      case "web":
-        return "Web";
-      case "api":
-        return "API";
-      case "database":
-        return "Database";
-      case "cache":
-        return "Cache";
-      case "other":
-        return "Other";
-      default:
-        return type;
+  const confirmScale = () => {
+    if (!scaleTarget) return;
+
+    setDeployments((prev) =>
+      prev.map((dep) =>
+        dep.id === scaleTarget.deploymentId
+          ? {
+              ...dep,
+              services: dep.services.map((s) => {
+                if (s.id === scaleTarget.serviceId) {
+                  const newReplicas = scaleValue;
+                  const runningReplicas = Math.min(
+                    s.replicasStatus.running,
+                    newReplicas,
+                  );
+                  const pendingReplicas = Math.max(
+                    0,
+                    newReplicas - s.replicasStatus.running,
+                  );
+
+                  let newReplicasList = [...(s.replicasList || [])];
+                  if (newReplicas > s.replicas) {
+                    for (let i = s.replicas; i < newReplicas; i++) {
+                      newReplicasList.push({
+                        id: `pod-${s.id}-${i + 1}`,
+                        name: `${s.name}-${Math.random().toString(36).substring(7)}`,
+                        status: "pending" as const,
+                        nodeId: undefined,
+                        nodeName: undefined,
+                        startedAt: undefined,
+                        uptime: undefined,
+                      });
+                    }
+                  } else if (newReplicas < s.replicas) {
+                    newReplicasList = newReplicasList.slice(0, newReplicas);
+                  }
+
+                  return {
+                    ...s,
+                    replicas: newReplicas,
+                    replicasStatus: {
+                      running: runningReplicas,
+                      pending: pendingReplicas,
+                      failed: s.replicasStatus.failed,
+                      succeeded: s.replicasStatus.succeeded,
+                      total: newReplicas,
+                    },
+                    replicasList: newReplicasList,
+                  };
+                }
+                return s;
+              }),
+            }
+          : dep,
+      ),
+    );
+
+    if (scaleValue > scaleTarget.currentReplicas) {
+      setTimeout(() => {
+        setDeployments((prev) =>
+          prev.map((dep) =>
+            dep.id === scaleTarget.deploymentId
+              ? {
+                  ...dep,
+                  services: dep.services.map((s) => {
+                    if (s.id === scaleTarget.serviceId) {
+                      return {
+                        ...s,
+                        replicasStatus: {
+                          ...s.replicasStatus,
+                          running: s.replicas,
+                          pending: 0,
+                        },
+                        replicasList: s.replicasList?.map((r) =>
+                          r.status === "pending"
+                            ? {
+                                ...r,
+                                status: "running" as const,
+                                nodeId: `node-${Math.floor(Math.random() * 3) + 1}`,
+                                nodeName: `worker-0${Math.floor(Math.random() * 3) + 1}`,
+                                startedAt: new Date().toISOString(),
+                                uptime: 100,
+                              }
+                            : r,
+                        ),
+                      };
+                    }
+                    return s;
+                  }),
+                }
+              : dep,
+          ),
+        );
+      }, 2000);
     }
+
+    setIsScaleOpen(false);
+    setScaleTarget(null);
   };
 
   return (
@@ -284,7 +397,7 @@ export default function ProviderHostingPage() {
                   Hosting Management
                 </h1>
                 <p className="text-lg text-dark-on-white-muted">
-                  Manage hosted services and instances
+                  Manage deployments and services
                 </p>
               </div>
             </div>
@@ -294,551 +407,84 @@ export default function ProviderHostingPage() {
               startContent={<Plus size={20} />}
               onPress={() => router.push("/deploy")}
             >
-              Deploy Service
+              Deploy Application
             </Button>
           </div>
         </div>
 
         {/* Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Card className="subnet-card">
-            <CardBody className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-default-600 mb-1">
-                    Total Instances
-                  </p>
-                  <p className="text-2xl font-bold">{stats.total}</p>
-                </div>
-                <Server className="text-primary" size={24} />
-              </div>
-            </CardBody>
-          </Card>
-
-          <Card className="subnet-card">
-            <CardBody className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-default-600 mb-1">Running</p>
-                  <p className="text-2xl font-bold text-success">
-                    {stats.running}
-                  </p>
-                </div>
-                <Activity className="text-success" size={24} />
-              </div>
-            </CardBody>
-          </Card>
-
-          <Card className="subnet-card">
-            <CardBody className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-default-600 mb-1">
-                    Resources Used
-                  </p>
-                  <p className="text-2xl font-bold">
-                    {stats.totalCpu} CPU / {stats.totalMemory} GB
-                  </p>
-                </div>
-                <TrendingUp className="text-primary" size={24} />
-              </div>
-            </CardBody>
-          </Card>
-
-          <Card className="subnet-card">
-            <CardBody className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-default-600 mb-1">Avg. Uptime</p>
-                  <p className="text-2xl font-bold">
-                    {stats.avgUptime.toFixed(1)}%
-                  </p>
-                </div>
-                <Activity className="text-secondary" size={24} />
-              </div>
-            </CardBody>
-          </Card>
-        </div>
+        <StatisticsCards stats={stats} />
 
         {/* Filters */}
-        <Card className="subnet-card mb-6">
-          <CardBody className="p-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <Input
-                className="flex-1"
-                placeholder="Search by name or user address..."
-                size="lg"
-                startContent={<Search className="text-default-400" size={18} />}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <Select
-                className="w-[160px]"
-                placeholder="All Status"
-                selectedKeys={statusFilter ? [statusFilter] : []}
-                size="md"
-                onSelectionChange={(keys) =>
-                  setStatusFilter(Array.from(keys)[0] as string)
-                }
-              >
-                <SelectItem key="all">All Status</SelectItem>
-                <SelectItem key="running">Running</SelectItem>
-                <SelectItem key="stopped">Stopped</SelectItem>
-                <SelectItem key="starting">Starting</SelectItem>
-                <SelectItem key="stopping">Stopping</SelectItem>
-                <SelectItem key="error">Error</SelectItem>
-              </Select>
-              <Select
-                className="w-[160px]"
-                placeholder="All Types"
-                selectedKeys={serviceTypeFilter ? [serviceTypeFilter] : []}
-                size="md"
-                onSelectionChange={(keys) =>
-                  setServiceTypeFilter(Array.from(keys)[0] as string)
-                }
-              >
-                <SelectItem key="all">All Types</SelectItem>
-                <SelectItem key="web">Web</SelectItem>
-                <SelectItem key="api">API</SelectItem>
-                <SelectItem key="database">Database</SelectItem>
-                <SelectItem key="cache">Cache</SelectItem>
-                <SelectItem key="other">Other</SelectItem>
-              </Select>
-            </div>
-          </CardBody>
-        </Card>
+        <Filters
+          searchQuery={searchQuery}
+          statusFilter={statusFilter}
+          onSearchChange={setSearchQuery}
+          onStatusFilterChange={setStatusFilter}
+        />
 
-        {/* Instances Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {filteredInstances.map((instance) => (
-            <Card key={instance.id} className="subnet-card">
-              <CardHeader className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-lg font-bold">{instance.name}</h3>
-                    <Chip
-                      color={getStatusColor(instance.status)}
-                      size="sm"
-                      variant="flat"
-                    >
-                      {instance.status.charAt(0).toUpperCase() +
-                        instance.status.slice(1)}
-                    </Chip>
-                    <Chip color="default" size="sm" variant="flat">
-                      {getServiceTypeLabel(instance.serviceType)}
-                    </Chip>
-                  </div>
-                  <p className="text-sm text-default-600 font-mono">
-                    {instance.image}:{instance.version}
-                  </p>
-                </div>
-              </CardHeader>
-              <CardBody className="pt-0">
-                <div className="space-y-3">
-                  {/* Resources */}
-                  <div className="flex items-center gap-4 text-sm">
-                    <div className="flex items-center gap-1">
-                      <Database className="text-primary" size={14} />
-                      <span>{instance.resources.cpu} CPU</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <HardDrive className="text-secondary" size={14} />
-                      <span>{instance.resources.memory} GB</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <HardDrive className="text-success" size={14} />
-                      <span>{instance.resources.storage} GB</span>
-                    </div>
-                  </div>
-
-                  {/* Domain */}
-                  {instance.domain && (
-                    <div className="text-sm">
-                      <span className="text-default-600">Domain: </span>
-                      <span className="font-mono text-default-900">
-                        {instance.domain}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* User */}
-                  <div className="text-sm">
-                    <span className="text-default-600">User: </span>
-                    <span className="font-mono text-default-900">
-                      {instance.user.name || instance.user.address}
-                    </span>
-                  </div>
-
-                  {/* Uptime */}
-                  <div className="flex items-center gap-2">
-                    <Activity className="text-success" size={14} />
-                    <span className="text-sm text-default-600">
-                      Uptime:{" "}
-                      <span className="font-semibold">{instance.uptime}%</span>
-                    </span>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 pt-2 border-t border-default-200">
-                    <Button
-                      size="sm"
-                      startContent={<Eye size={14} />}
-                      variant="flat"
-                      onPress={() => handleViewDetails(instance)}
-                    >
-                      Details
-                    </Button>
-                    {instance.status === "running" ? (
-                      <>
-                        <Button
-                          color="warning"
-                          size="sm"
-                          startContent={<Square size={14} />}
-                          variant="flat"
-                          onPress={() => handleStop(instance.id)}
-                        >
-                          Stop
-                        </Button>
-                        <Button
-                          color="primary"
-                          size="sm"
-                          startContent={<RefreshCw size={14} />}
-                          variant="flat"
-                          onPress={() => handleRestart(instance.id)}
-                        >
-                          Restart
-                        </Button>
-                      </>
-                    ) : (
-                      <Button
-                        color="success"
-                        isDisabled={instance.status === "starting"}
-                        size="sm"
-                        startContent={<Play size={14} />}
-                        variant="flat"
-                        onPress={() => handleStart(instance.id)}
-                      >
-                        Start
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
+        {/* Deployments List */}
+        <div className="space-y-4">
+          {filteredDeployments.map((deployment) => (
+            <DeploymentCard
+              key={deployment.id}
+              deployment={deployment}
+              isExpanded={expandedDeployments.has(deployment.id)}
+              nowTs={nowTs}
+              onToggleExpand={toggleExpanded}
+              onViewDetails={handleViewDetails}
+              onStart={handleStartDeployment}
+              onStop={handleStopDeployment}
+              onRestart={handleRestartDeployment}
+              onViewServiceDetails={handleViewDetails}
+              onScaleService={handleScaleService}
+              onStartService={handleStartService}
+              onStopService={handleStopService}
+            />
           ))}
         </div>
 
-        {filteredInstances.length === 0 && (
-          <Card className="subnet-card">
-            <CardBody className="p-12 text-center">
-              <Server className="mx-auto mb-4 text-default-300" size={48} />
-              <h3 className="text-lg font-semibold mb-2">
-                No hosting instances found
-              </h3>
-              <p className="text-default-600 mb-4">
-                {searchQuery ||
-                statusFilter !== "all" ||
-                serviceTypeFilter !== "all"
-                  ? "Try adjusting your filters"
-                  : "Deploy your first service to get started"}
-              </p>
-              {!searchQuery &&
-                statusFilter === "all" &&
-                serviceTypeFilter === "all" && (
-                  <Button
-                    color="primary"
-                    startContent={<Plus size={18} />}
-                    onPress={() => router.push("/deploy")}
-                  >
-                    Deploy Service
-                  </Button>
-                )}
-            </CardBody>
-          </Card>
+        {filteredDeployments.length === 0 && (
+          <EmptyState
+            searchQuery={searchQuery}
+            statusFilter={statusFilter}
+            onDeploy={() => router.push("/deploy")}
+          />
         )}
 
-        {/* Detail Modal */}
-        <Modal
+        {/* Modals */}
+        <DeploymentDetailModal
           isOpen={isDetailOpen}
-          scrollBehavior="inside"
-          size="2xl"
           onOpenChange={setIsDetailOpen}
-        >
-          <ModalContent>
-            {(onClose) => (
-              <>
-                <ModalHeader>
-                  <div className="flex items-center gap-2">
-                    <Server size={20} />
-                    <span>{selectedInstance?.name}</span>
-                    {selectedInstance && (
-                      <Chip
-                        color={getStatusColor(selectedInstance.status)}
-                        size="sm"
-                        variant="flat"
-                      >
-                        {selectedInstance.status}
-                      </Chip>
-                    )}
-                  </div>
-                </ModalHeader>
-                <ModalBody>
-                  {selectedInstance && (
-                    <div className="space-y-6">
-                      {/* Basic Info */}
-                      <div>
-                        <h3 className="font-semibold mb-3">
-                          Basic Information
-                        </h3>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <span className="text-sm text-default-600">
-                              Service Type
-                            </span>
-                            <p className="font-medium">
-                              {getServiceTypeLabel(
-                                selectedInstance.serviceType,
-                              )}
-                            </p>
-                          </div>
-                          <div>
-                            <span className="text-sm text-default-600">
-                              Image
-                            </span>
-                            <p className="font-mono text-sm">
-                              {selectedInstance.image}
-                            </p>
-                          </div>
-                          <div>
-                            <span className="text-sm text-default-600">
-                              Version
-                            </span>
-                            <p className="font-mono text-sm">
-                              {selectedInstance.version}
-                            </p>
-                          </div>
-                          <div>
-                            <span className="text-sm text-default-600">
-                              Status
-                            </span>
-                            <Chip
-                              color={getStatusColor(selectedInstance.status)}
-                              size="sm"
-                              variant="flat"
-                            >
-                              {selectedInstance.status}
-                            </Chip>
-                          </div>
-                        </div>
-                      </div>
+          selectedDeployment={selectedDeployment}
+          selectedService={selectedService}
+          nowTs={nowTs}
+          onViewService={(deployment, service) => {
+            setSelectedService({ deployment, service });
+          }}
+          onStartService={handleStartService}
+          onStopService={handleStopService}
+        />
 
-                      {/* Domain */}
-                      {selectedInstance.domain && (
-                        <div>
-                          <h3 className="font-semibold mb-3">Domain</h3>
-                          <p className="font-mono text-sm bg-default-50 p-2 rounded">
-                            {selectedInstance.domain}
-                          </p>
-                        </div>
-                      )}
+        <ScaleModal
+          isOpen={isScaleOpen}
+          onOpenChange={setIsScaleOpen}
+          currentReplicas={scaleTarget?.currentReplicas || 1}
+          scaleValue={scaleValue}
+          onScaleValueChange={setScaleValue}
+          onConfirm={confirmScale}
+        />
 
-                      {/* Ports */}
-                      <div>
-                        <h3 className="font-semibold mb-3">Ports</h3>
-                        <div className="space-y-2">
-                          {selectedInstance.ports.map((port, index) => (
-                            <div
-                              key={index}
-                              className="flex items-center justify-between p-2 bg-default-50 rounded"
-                            >
-                              <span className="font-mono text-sm">
-                                {port.containerPort} → {port.hostPort}
-                              </span>
-                              <Chip size="sm" variant="flat">
-                                {port.protocol.toUpperCase()}
-                              </Chip>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Resources */}
-                      <div>
-                        <h3 className="font-semibold mb-3">Resources</h3>
-                        <div className="grid grid-cols-3 gap-4">
-                          <div className="p-3 bg-default-50 rounded">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Database className="text-primary" size={16} />
-                              <span className="text-sm text-default-600">
-                                CPU
-                              </span>
-                            </div>
-                            <p className="text-lg font-bold">
-                              {selectedInstance.resources.cpu} cores
-                            </p>
-                          </div>
-                          <div className="p-3 bg-default-50 rounded">
-                            <div className="flex items-center gap-2 mb-1">
-                              <HardDrive className="text-secondary" size={16} />
-                              <span className="text-sm text-default-600">
-                                Memory
-                              </span>
-                            </div>
-                            <p className="text-lg font-bold">
-                              {selectedInstance.resources.memory} GB
-                            </p>
-                          </div>
-                          <div className="p-3 bg-default-50 rounded">
-                            <div className="flex items-center gap-2 mb-1">
-                              <HardDrive className="text-success" size={16} />
-                              <span className="text-sm text-default-600">
-                                Storage
-                              </span>
-                            </div>
-                            <p className="text-lg font-bold">
-                              {selectedInstance.resources.storage} GB
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* User Info */}
-                      <div>
-                        <h3 className="font-semibold mb-3">User Information</h3>
-                        <div className="p-3 bg-default-50 rounded">
-                          <p className="font-mono text-sm">
-                            {selectedInstance.user.address}
-                          </p>
-                          {selectedInstance.user.name && (
-                            <p className="text-sm text-default-600 mt-1">
-                              {selectedInstance.user.name}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Timestamps */}
-                      <div>
-                        <h3 className="font-semibold mb-3">Timestamps</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <span className="text-sm text-default-600">
-                              Created
-                            </span>
-                            <p className="text-sm">
-                              {new Date(
-                                selectedInstance.createdAt,
-                              ).toLocaleString()}
-                            </p>
-                          </div>
-                          <div>
-                            <span className="text-sm text-default-600">
-                              Last Updated
-                            </span>
-                            <p className="text-sm">
-                              {new Date(
-                                selectedInstance.updatedAt,
-                              ).toLocaleString()}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Uptime */}
-                      <div>
-                        <h3 className="font-semibold mb-3">Uptime</h3>
-                        <div className="flex items-center gap-2">
-                          <Activity className="text-success" size={20} />
-                          <span className="text-2xl font-bold">
-                            {selectedInstance.uptime}%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </ModalBody>
-                <ModalFooter>
-                  <Button variant="light" onPress={onClose}>
-                    Close
-                  </Button>
-                  {selectedInstance && (
-                    <>
-                      {selectedInstance.status === "running" ? (
-                        <>
-                          <Button
-                            color="warning"
-                            startContent={<Square size={16} />}
-                            variant="flat"
-                            onPress={() => {
-                              handleStop(selectedInstance.id);
-                              onClose();
-                            }}
-                          >
-                            Stop
-                          </Button>
-                          <Button
-                            color="primary"
-                            startContent={<RefreshCw size={16} />}
-                            onPress={() => {
-                              handleRestart(selectedInstance.id);
-                            }}
-                          >
-                            Restart
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          color="success"
-                          startContent={<Play size={16} />}
-                          onPress={() => {
-                            handleStart(selectedInstance.id);
-                            onClose();
-                          }}
-                        >
-                          Start
-                        </Button>
-                      )}
-                    </>
-                  )}
-                </ModalFooter>
-              </>
-            )}
-          </ModalContent>
-        </Modal>
-
-        {/* Delete Confirmation Modal */}
-        <Modal isOpen={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-          <ModalContent>
-            {(onClose) => (
-              <>
-                <ModalHeader>Delete Hosting Instance</ModalHeader>
-                <ModalBody>
-                  <p>
-                    Are you sure you want to delete{" "}
-                    <strong>{selectedInstance?.name}</strong>? This action
-                    cannot be undone.
-                  </p>
-                </ModalBody>
-                <ModalFooter>
-                  <Button variant="light" onPress={onClose}>
-                    Cancel
-                  </Button>
-                  <Button
-                    color="danger"
-                    onPress={() => {
-                      if (selectedInstance) {
-                        handleDelete(selectedInstance.id);
-                        onClose();
-                      }
-                    }}
-                  >
-                    Delete
-                  </Button>
-                </ModalFooter>
-              </>
-            )}
-          </ModalContent>
-        </Modal>
+        <DeleteModal
+          isOpen={isDeleteOpen}
+          onOpenChange={setIsDeleteOpen}
+          deploymentName={selectedDeployment?.name || ""}
+          onConfirm={() => {
+            if (selectedDeployment) {
+              handleDeleteDeployment(selectedDeployment.id);
+            }
+          }}
+        />
       </div>
     </div>
   );
