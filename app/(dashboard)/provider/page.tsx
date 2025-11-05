@@ -10,6 +10,7 @@ import {
   TrendingUp,
   ArrowRight,
   Settings,
+  ClipboardCheck,
 } from "lucide-react";
 
 export default function ProviderDashboardPage() {
@@ -29,6 +30,14 @@ export default function ProviderDashboardPage() {
       icon: Database,
       color: "secondary",
       stats: "12 deployments",
+    },
+    {
+      title: "Open Orders",
+      description: "Orders without expiration - accept anytime",
+      href: "/provider/orders/open",
+      icon: ClipboardCheck,
+      color: "success",
+      stats: "2 open",
     },
     {
       title: "Staking",
