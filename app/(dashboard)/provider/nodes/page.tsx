@@ -71,6 +71,7 @@ export default function NodesManagementPage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isLoadingNodes, setIsLoadingNodes] = useState(false);
 
   // Form state for adding new node with k3s installation
   const [newNodeForm, setNewNodeForm] = useState({
@@ -174,6 +175,12 @@ export default function NodesManagementPage() {
 
   const onAddOpen = () => {
     resetStep(); // Reset to first step
+    
+    // Auto-generate node name
+    const timestamp = Date.now().toString().slice(-6);
+    const nodeName = `k3s-node-${timestamp}`;
+    updateNewNodeForm("name", nodeName);
+    
     // Auto-set cluster name, ID, and location from existing nodes if available
     if (nodes.length > 0) {
       if (nodes[0].clusterName) {
@@ -193,7 +200,13 @@ export default function NodesManagementPage() {
           updateNewNodeForm("location.zone", nodes[0].location.zone);
         }
       }
+    } else {
+      // Auto-generate cluster name and ID if no existing nodes
+      const clusterNameBase = nodeName.replace("k3s-", "k3s-cluster-");
+      updateNewNodeForm("clusterName", clusterNameBase);
+      updateNewNodeForm("clusterId", `cluster-${nodeName.toLowerCase().replace(/[^a-z0-9]/g, "-")}`);
     }
+    
     setIsAddOpen(true);
   };
   const onAddClose = () => {
@@ -212,240 +225,179 @@ export default function NodesManagementPage() {
   const onDeleteOpen = () => setIsDeleteOpen(true);
   const onDeleteClose = () => setIsDeleteOpen(false);
 
-  // Mock data initialization
-  useEffect(() => {
-    if (nodes.length === 0) {
-      const mockNodes: Node[] = [
-        {
-          id: "node-1",
-          providerId: "provider-1",
-          name: "worker-node-01",
-          nodeName: "ip-10-0-1-101.us-west-2.compute.internal",
-          description:
-            "Worker node in production cluster - Primary compute node",
-          clusterId: "cluster-prod-01",
-          clusterName: "Production Cluster",
-          role: "worker",
-          status: "active",
-          kubernetesVersion: "v1.28.3",
-          containerRuntime: "containerd://1.7.8",
-          osImage: "Ubuntu 22.04.3 LTS",
-          kernelVersion: "5.15.0-91-generic",
-          kubeletVersion: "v1.28.3",
-          labels: {
-            "kubernetes.io/arch": "amd64",
-            "kubernetes.io/os": "linux",
-            "node-role.kubernetes.io/worker": "",
-            "topology.kubernetes.io/zone": "us-west-2a",
-          },
-          taints: [],
-          specs: {
-            cpu: 32,
-            memory: 128,
-            storage: 2000,
-            bandwidth: 1000,
-            pods: 110,
-          },
-          usage: {
-            cpu: 65,
-            memory: 72,
-            storage: 45,
-            pods: 82,
-          },
-          pods: {
-            running: 75,
-            pending: 2,
-            failed: 0,
-            succeeded: 5,
-            total: 82,
-            capacity: 110,
-          },
-          location: {
-            country: "USA",
-            region: "North America",
-            city: "San Francisco",
-            zone: "us-west-2a",
-          },
-          uptime: 99.8,
-          reputation: 4.9,
-          createdAt: "2024-01-10T08:00:00Z",
-          updatedAt: "2024-01-15T10:30:00Z",
-        },
-        {
-          id: "node-2",
-          providerId: "provider-1",
-          name: "worker-node-02",
-          nodeName: "ip-10-0-1-102.us-west-2.compute.internal",
-          description: "Worker node in production cluster - General workloads",
-          clusterId: "cluster-prod-01",
-          clusterName: "Production Cluster",
-          role: "worker",
-          status: "active",
-          kubernetesVersion: "v1.28.3",
-          containerRuntime: "containerd://1.7.8",
-          osImage: "Ubuntu 22.04.3 LTS",
-          kernelVersion: "5.15.0-91-generic",
-          kubeletVersion: "v1.28.3",
-          labels: {
-            "kubernetes.io/arch": "amd64",
-            "kubernetes.io/os": "linux",
-            "node-role.kubernetes.io/worker": "",
-            "topology.kubernetes.io/zone": "us-west-2b",
-          },
-          taints: [],
-          specs: {
-            cpu: 16,
-            memory: 64,
-            storage: 1000,
-            bandwidth: 500,
-            pods: 110,
-          },
-          usage: {
-            cpu: 45,
-            memory: 58,
-            storage: 35,
-            pods: 56,
-          },
-          pods: {
-            running: 52,
-            pending: 1,
-            failed: 0,
-            succeeded: 3,
-            total: 56,
-            capacity: 110,
-          },
-          location: {
-            country: "USA",
-            region: "North America",
-            city: "New York",
-            zone: "us-west-2b",
-          },
-          uptime: 99.5,
-          reputation: 4.7,
-          createdAt: "2024-01-12T09:00:00Z",
-          updatedAt: "2024-01-15T11:20:00Z",
-        },
-        {
-          id: "node-3",
-          providerId: "provider-1",
-          name: "gpu-node-01",
-          nodeName: "ip-10-0-2-101.eu-central-1.compute.internal",
-          description: "GPU-accelerated worker node for AI/ML workloads",
-          clusterId: "cluster-ml-01",
-          clusterName: "ML Cluster",
-          role: "worker",
-          status: "maintenance",
-          kubernetesVersion: "v1.28.2",
-          containerRuntime: "containerd://1.7.7",
-          osImage: "Ubuntu 22.04.2 LTS",
-          kernelVersion: "5.15.0-89-generic",
-          kubeletVersion: "v1.28.2",
-          labels: {
-            "kubernetes.io/arch": "amd64",
-            "kubernetes.io/os": "linux",
-            "node-role.kubernetes.io/worker": "",
-            accelerator: "nvidia-gpu",
-            "topology.kubernetes.io/zone": "eu-central-1a",
-          },
-          taints: [
-            {
-              key: "nvidia.com/gpu",
-              value: "present",
-              effect: "NoSchedule",
-            },
-          ],
-          specs: {
-            cpu: 64,
-            memory: 256,
-            storage: 4000,
-            bandwidth: 2000,
-            pods: 110,
-          },
-          usage: {
-            cpu: 0,
-            memory: 0,
-            storage: 0,
-            pods: 0,
-          },
-          pods: {
-            running: 0,
-            pending: 0,
-            failed: 0,
-            succeeded: 0,
-            total: 0,
-            capacity: 110,
-          },
-          location: {
-            country: "Germany",
-            region: "Europe",
-            city: "Frankfurt",
-            zone: "eu-central-1a",
-          },
-          uptime: 98.9,
-          reputation: 4.8,
-          createdAt: "2024-01-08T10:00:00Z",
-          updatedAt: "2024-01-15T08:45:00Z",
-        },
-        {
-          id: "node-4",
-          providerId: "provider-1",
-          name: "storage-node-01",
-          nodeName: "ip-10-0-3-101.ap-southeast-1.compute.internal",
-          description: "Storage-optimized node for data workloads",
-          clusterId: "cluster-storage-01",
-          clusterName: "Storage Cluster",
-          role: "worker",
-          status: "inactive",
-          kubernetesVersion: "v1.28.1",
-          containerRuntime: "containerd://1.7.6",
-          osImage: "Ubuntu 22.04.1 LTS",
-          kernelVersion: "5.15.0-87-generic",
-          kubeletVersion: "v1.28.1",
-          labels: {
-            "kubernetes.io/arch": "amd64",
-            "kubernetes.io/os": "linux",
-            "node-role.kubernetes.io/worker": "",
-            storage: "high-capacity",
-            "topology.kubernetes.io/zone": "ap-southeast-1a",
-          },
-          taints: [],
-          specs: {
-            cpu: 8,
-            memory: 32,
-            storage: 10000,
-            bandwidth: 250,
-            pods: 110,
-          },
-          usage: {
-            cpu: 0,
-            memory: 0,
-            storage: 0,
-            pods: 0,
-          },
-          pods: {
-            running: 0,
-            pending: 0,
-            failed: 0,
-            succeeded: 0,
-            total: 0,
-            capacity: 110,
-          },
-          location: {
-            country: "Singapore",
-            region: "Asia Pacific",
-            city: "Singapore",
-            zone: "ap-southeast-1a",
-          },
-          uptime: 99.2,
-          reputation: 4.6,
-          createdAt: "2024-01-05T07:00:00Z",
-          updatedAt: "2024-01-14T16:30:00Z",
-        },
-      ];
-
-      setNodes(mockNodes);
+  // Helper function to convert Kubernetes resource units to numbers
+  const parseKubernetesResource = (value: string | undefined): number => {
+    if (!value) return 0;
+    
+    // Parse CPU (cores)
+    if (!value.includes("m") && !value.includes("Ki") && !value.includes("Mi") && !value.includes("Gi") && !value.includes("Ti")) {
+      return parseFloat(value) || 0;
     }
-  }, [nodes.length, setNodes]);
+    
+    // Parse memory/storage (Ki, Mi, Gi, Ti)
+    const num = parseFloat(value);
+    if (isNaN(num)) return 0;
+    
+    let result = 0;
+    if (value.includes("Ki")) result = num / (1024 * 1024); // KiB to GB
+    else if (value.includes("Mi")) result = num / 1024; // MiB to GB
+    else if (value.includes("Gi")) result = num; // GiB to GB
+    else if (value.includes("Ti")) result = num * 1024; // TiB to GB
+    else result = num;
+    
+    // Round to 2 decimal places
+    return Math.round(result * 100) / 100;
+  };
+
+  // Helper function to generate cluster name and ID
+  const generateClusterInfo = (apiNodes: any[]) => {
+    // Try to get cluster name from node labels
+    const clusterNameFromLabels = apiNodes.find((node) => 
+      node.labels?.["kubernetes.io/cluster-name"] || 
+      node.labels?.["cluster-name"]
+    )?.labels?.["kubernetes.io/cluster-name"] || 
+    apiNodes.find((node) => node.labels?.["cluster-name"])?.labels?.["cluster-name"];
+
+    if (clusterNameFromLabels) {
+      const clusterId = `cluster-${clusterNameFromLabels.toLowerCase().replace(/\s+/g, "-")}-${Date.now().toString().slice(-6)}`;
+      return {
+        clusterName: clusterNameFromLabels,
+        clusterId: clusterId,
+      };
+    }
+
+    // Generate from hostname or node name
+    const firstNode = apiNodes[0];
+    const hostname = firstNode?.name || firstNode?.internal_ip || "k3s";
+    const clusterNameBase = hostname.split(".")[0] || "k3s-cluster";
+    const timestamp = Date.now().toString().slice(-6);
+    
+    return {
+      clusterName: `${clusterNameBase}-${timestamp}`,
+      clusterId: `cluster-${clusterNameBase.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${timestamp}`,
+    };
+  };
+
+  // Fetch nodes from Subnet Agent API
+  const fetchNodes = async () => {
+    // Only fetch if API is healthy
+    if (apiHealthStatus !== "healthy") {
+      return;
+    }
+
+    try {
+      setIsLoadingNodes(true);
+      
+      // Check API key validity before fetching
+      const isApiKeyValid = await checkApiKeyValidity();
+      if (!isApiKeyValid) {
+        setIsLoadingNodes(false);
+        return;
+      }
+
+      // Fetch nodes from local host
+      const nodesResponse = await subnetAgentClient.getNodes({
+        target: "local",
+      });
+
+      // Generate cluster info for all nodes
+      const clusterInfo = generateClusterInfo(nodesResponse.nodes);
+
+      // Convert API nodes to our Node format
+      const fetchedNodes: Node[] = nodesResponse.nodes.map((apiNode, index) => {
+        // Try to find existing node by nodeName to preserve metadata
+        const existingNode = nodes.find((n) => n.nodeName === apiNode.name);
+        
+        // Use existing cluster info if available, otherwise use generated
+        const finalClusterName = existingNode?.clusterName || 
+          (nodes.length > 0 ? nodes[0].clusterName : clusterInfo.clusterName);
+        const finalClusterId = existingNode?.clusterId || 
+          (nodes.length > 0 ? nodes[0].clusterId : clusterInfo.clusterId);
+        
+        return {
+          id: existingNode?.id || `node-${Date.now()}-${index}-${apiNode.name}`,
+          providerId: existingNode?.providerId || "provider-1",
+          name: existingNode?.name || apiNode.name,
+          nodeName: apiNode.name,
+          description: existingNode?.description || `k3s ${apiNode.roles.join(",")} node`,
+          clusterId: finalClusterId,
+          clusterName: finalClusterName,
+          role: apiNode.roles.includes("control-plane") || apiNode.roles.includes("master") || apiNode.roles.includes("server")
+            ? "master"
+            : "worker",
+          status: apiNode.status === "Ready" ? "active" : 
+                  apiNode.status === "NotReady" ? "inactive" :
+                  apiNode.status === "Unknown" ? "offline" : "inactive",
+          kubernetesVersion: apiNode.version,
+          containerRuntime: apiNode.container_runtime,
+          osImage: apiNode.os_image,
+          kernelVersion: apiNode.kernel_version,
+          kubeletVersion: apiNode.version,
+          labels: apiNode.labels,
+          taints: apiNode.annotations ? Object.entries(apiNode.annotations)
+            .filter(([key]) => key.startsWith("taint."))
+            .map(([key, value]) => {
+              const parts = (value as string).split(":");
+              return {
+                key: key.replace("taint.", ""),
+                value: parts[0] || undefined,
+                effect: (parts[1] as "NoSchedule" | "PreferNoSchedule" | "NoExecute") || "NoSchedule",
+              };
+            }) : existingNode?.taints || [],
+          specs: existingNode?.specs || {
+            cpu: apiNode.cpu ? parseInt(apiNode.cpu) : (apiNode.allocatable_cpu ? parseInt(apiNode.allocatable_cpu) : 0),
+            memory: apiNode.memory ? parseKubernetesResource(apiNode.memory) : (apiNode.allocatable_memory ? parseKubernetesResource(apiNode.allocatable_memory) : 0),
+            storage: apiNode.storage ? parseKubernetesResource(apiNode.storage) : (apiNode.allocatable_storage ? parseKubernetesResource(apiNode.allocatable_storage) : 0),
+            bandwidth: 0, // Not available from API
+            pods: 110, // Default pod capacity
+          },
+          usage: existingNode?.usage || {
+            cpu: 0,
+            memory: 0,
+            storage: 0,
+            pods: 0,
+          },
+          pods: existingNode?.pods || {
+            running: 0,
+            pending: 0,
+            failed: 0,
+            succeeded: 0,
+            total: 0,
+            capacity: 110,
+          },
+          location: existingNode?.location || {
+            country: "",
+            region: "",
+            city: "",
+            zone: "",
+          },
+          uptime: existingNode?.uptime || 100,
+          reputation: existingNode?.reputation || 0,
+          createdAt: existingNode?.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      });
+
+      setNodes(fetchedNodes);
+    } catch (error) {
+      console.error("Failed to fetch nodes:", error);
+      // Check if it's an auth error
+      if (handleApiError(error)) {
+        return; // Auth error handled
+      }
+      // If fetch fails, keep existing nodes (could be empty or from previous fetch)
+    } finally {
+      setIsLoadingNodes(false);
+    }
+  };
+
+  // Fetch nodes when API becomes healthy
+  useEffect(() => {
+    if (apiHealthStatus === "healthy") {
+      fetchNodes();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiHealthStatus]);
 
   // Filter nodes
   const filteredNodes = nodes.filter((node) => {
@@ -619,15 +571,32 @@ export default function NodesManagementPage() {
               : {}),
           });
 
-          // Get cluster name and ID - use from existing nodes if available
-          const clusterNameForNode =
-            nodes.length > 0
-              ? nodes[0].clusterName || newNodeForm.clusterName
-              : newNodeForm.clusterName;
-          const clusterIdForNode =
-            nodes.length > 0
-              ? nodes[0].clusterId || newNodeForm.clusterId
-              : newNodeForm.clusterId;
+          // Generate cluster name and ID if not provided
+          const generateClusterInfoForNewNode = () => {
+            if (nodes.length > 0) {
+              return {
+                clusterName: nodes[0].clusterName,
+                clusterId: nodes[0].clusterId,
+              };
+            }
+            if (newNodeForm.clusterName && newNodeForm.clusterId) {
+              return {
+                clusterName: newNodeForm.clusterName,
+                clusterId: newNodeForm.clusterId,
+              };
+            }
+            // Auto-generate cluster info
+            const timestamp = Date.now().toString().slice(-6);
+            const baseName = newNodeForm.name || "k3s-cluster";
+            return {
+              clusterName: `${baseName}-${timestamp}`,
+              clusterId: `cluster-${baseName.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${timestamp}`,
+            };
+          };
+
+          const clusterInfoForNode = generateClusterInfoForNewNode();
+          const clusterNameForNode = clusterInfoForNode.clusterName;
+          const clusterIdForNode = clusterInfoForNode.clusterId;
           
           // Get location from existing nodes if available
           const locationForNode =
@@ -754,11 +723,12 @@ export default function NodesManagementPage() {
       return;
     }
 
-    // Only require cluster name if no existing nodes
+    // Auto-generate cluster name and ID if not provided and no existing nodes
     if (nodes.length === 0 && !newNodeForm.clusterName) {
-      alert("Please fill in required fields: Cluster Name");
-
-      return;
+      const timestamp = Date.now().toString().slice(-6);
+      const baseName = newNodeForm.name || "k3s-cluster";
+      updateNewNodeForm("clusterName", `${baseName}-${timestamp}`);
+      updateNewNodeForm("clusterId", `cluster-${baseName.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${timestamp}`);
     }
 
     // Only require server connection info for remote targets
@@ -792,11 +762,11 @@ export default function NodesManagementPage() {
         jobId: undefined,
       });
 
-      // Get cluster name - use from existing nodes if available
+      // Get cluster name - use from existing nodes if available, otherwise use form value or generate
       const clusterName =
         nodes.length > 0
           ? nodes[0].clusterName || newNodeForm.clusterName
-          : newNodeForm.clusterName;
+          : newNodeForm.clusterName || `k3s-cluster-${Date.now().toString().slice(-6)}`;
 
       // Prepare request
       const request: InstallK3sRequest = {
@@ -866,12 +836,22 @@ export default function NodesManagementPage() {
     setNewNodeForm((prev) => {
       const keys = field.split(".");
       const newForm = { ...prev };
-      let current: any = newForm;
 
+      // Handle nested properties by creating shallow copies at each level
+      if (keys.length === 1) {
+        // Simple property update
+        return { ...newForm, [keys[0]]: value };
+      }
+
+      // Nested property update
+      let current: any = newForm;
       for (let i = 0; i < keys.length - 1; i++) {
+        // Create shallow copy of nested object
+        current[keys[i]] = { ...current[keys[i]] };
         current = current[keys[i]];
       }
 
+      // Set the final value
       current[keys[keys.length - 1]] = value;
 
       return newForm;
@@ -1238,16 +1218,27 @@ export default function NodesManagementPage() {
         />
 
         {/* Nodes List */}
-        <NodeList
-          nodes={nodes}
-          searchQuery={searchQuery}
-          statusFilter={statusFilter}
-          onViewDetails={handleViewDetails}
-          onEdit={handleEditNode}
-          onDelete={handleDeleteNode}
-          onStatusChange={handleStatusChange}
-          onAddNode={handleAddNode}
-        />
+        {isLoadingNodes ? (
+          <Card className="subnet-card">
+            <CardBody className="p-8 text-center">
+              <div className="flex flex-col items-center gap-4">
+                <Activity className="text-primary animate-pulse" size={32} />
+                <p className="text-default-600">Loading nodes from Subnet Agent...</p>
+              </div>
+            </CardBody>
+          </Card>
+        ) : (
+          <NodeList
+            nodes={nodes}
+            searchQuery={searchQuery}
+            statusFilter={statusFilter}
+            onViewDetails={handleViewDetails}
+            onEdit={handleEditNode}
+            onDelete={handleDeleteNode}
+            onStatusChange={handleStatusChange}
+            onAddNode={handleAddNode}
+          />
+        )}
       </div>
 
       {/* Add Node Modal */}

@@ -47,6 +47,12 @@ export interface K3sNode {
   container_runtime: string;
   labels: Record<string, string>;
   annotations: Record<string, string>;
+  cpu?: string;
+  memory?: string;
+  storage?: string;
+  allocatable_cpu?: string;
+  allocatable_memory?: string;
+  allocatable_storage?: string;
 }
 
 export interface GetNodesResponse {

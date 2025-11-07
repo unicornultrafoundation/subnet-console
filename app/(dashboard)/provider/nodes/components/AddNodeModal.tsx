@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import {
   Modal,
   ModalContent,
@@ -131,6 +132,36 @@ export function AddNodeModal({
     "Node Config",
     "Review",
   ];
+
+  // Auto-generate node name, cluster name, and cluster ID when entering Node Config step
+  useEffect(() => {
+    const isNodeConfigStep = 
+      (newNodeForm.target === "host" && currentStep === 2) ||
+      (newNodeForm.target === "remote" && currentStep === 3);
+    
+    if (isNodeConfigStep && isOpen) {
+      // Auto-generate node name if empty
+      if (!newNodeForm.name) {
+        const timestamp = Date.now().toString().slice(-6);
+        const nodeName = `k3s-node-${timestamp}`;
+        onFormChange("name", nodeName);
+      }
+      
+      // Auto-generate cluster name and ID if no existing nodes and fields are empty
+      if (existingNodes.length === 0) {
+        if (!newNodeForm.clusterName) {
+          const timestamp = Date.now().toString().slice(-6);
+          const nodeName = newNodeForm.name || `k3s-node-${timestamp}`;
+          const clusterNameBase = nodeName.replace("k3s-", "k3s-cluster-");
+          onFormChange("clusterName", clusterNameBase);
+        }
+        if (!newNodeForm.clusterId) {
+          const nodeName = newNodeForm.name || `k3s-node-${Date.now().toString().slice(-6)}`;
+          onFormChange("clusterId", `cluster-${nodeName.toLowerCase().replace(/[^a-z0-9]/g, "-")}`);
+        }
+      }
+    }
+  }, [currentStep, isOpen, newNodeForm.target, newNodeForm.name, newNodeForm.clusterName, newNodeForm.clusterId, existingNodes.length, onFormChange]);
 
   return (
     <Modal
@@ -711,7 +742,10 @@ export function AddNodeModal({
                             >
                               {cloudZones.flatMap((regionGroup) =>
                                 regionGroup.zones.map((zone) => (
-                                  <SelectItem key={zone}>
+                                  <SelectItem 
+                                    key={zone} 
+                                    textValue={`${zone} (${regionGroup.region})`}
+                                  >
                                     {zone} ({regionGroup.region})
                                   </SelectItem>
                                 )),
