@@ -47,6 +47,21 @@ export const apiConfig = {
     },
   },
 
+  // Subnet Agent API configuration
+  subnetAgent: {
+    baseUrl: process.env.NEXT_PUBLIC_SUBNET_AGENT_URL || "http://127.0.0.1:8585",
+    apiKey: process.env.NEXT_PUBLIC_SUBNET_AGENT_API_KEY || "",
+    endpoints: {
+      installK3s: "/api/install-k3s",
+      nodes: "/api/nodes",
+      deployOperator: "/api/deploy/subnet-operator",
+      updateOperator: "/api/deploy/subnet-operator/update",
+      jobStatus: (jobId: string) => `/api/status/${jobId}`,
+      health: "/health",
+      validateKey: "/api/validate-key",
+    },
+  },
+
   // Request timeout
   timeout: 30000,
 

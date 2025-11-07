@@ -23,6 +23,8 @@ import {
   Box,
   HardDrive,
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   Modal,
@@ -36,6 +38,11 @@ import { Progress } from "@heroui/progress";
 
 import { Node } from "@/types";
 import { useNodeStore } from "@/store/node-store";
+import {
+  subnetAgentClient,
+  InstallK3sRequest,
+  JobStatus,
+} from "@/lib/api/subnet-agent";
 
 export default function NodesManagementPage() {
   const router = useRouter();
@@ -52,6 +59,9 @@ export default function NodesManagementPage() {
 
   // Form state for adding new node with k3s installation
   const [newNodeForm, setNewNodeForm] = useState({
+    // Target type
+    target: "host" as "host" | "remote",
+
     // Server connection info
     serverIP: "",
     sshPort: "22",
@@ -65,7 +75,7 @@ export default function NodesManagementPage() {
     description: "",
     clusterId: "",
     clusterName: "",
-    role: "worker" as "master" | "worker" | "control-plane",
+    roles: ["server", "agent"] as Array<"server" | "agent">,
 
     // k3s installation config
     k3sVersion: "latest",
@@ -112,15 +122,280 @@ export default function NodesManagementPage() {
       | "error";
     message: string;
     logs: string[];
+    jobId?: string;
   }>({
     step: "",
     status: "idle",
     message: "",
     logs: [],
+    jobId: undefined,
   });
 
-  const onAddOpen = () => setIsAddOpen(true);
-  const onAddClose = () => setIsAddOpen(false);
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(
+    null,
+  );
+
+  // API Health check state
+  const [apiHealthStatus, setApiHealthStatus] = useState<"checking" | "healthy" | "unhealthy" | "needs-api-key">("checking");
+  const [apiHealthError, setApiHealthError] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState<string>("");
+  const [apiKeyInput, setApiKeyInput] = useState<string>("");
+
+  // Helper function to check and handle API key validation
+  const checkApiKeyValidity = async (): Promise<boolean> => {
+    const storedApiKey = localStorage.getItem("subnet_agent_api_key") || "";
+    if (!storedApiKey && !process.env.NEXT_PUBLIC_SUBNET_AGENT_API_KEY) {
+      setApiHealthStatus("needs-api-key");
+      return false;
+    }
+
+    try {
+      const apiKeyToCheck = storedApiKey || process.env.NEXT_PUBLIC_SUBNET_AGENT_API_KEY || "";
+      const validationResult = await subnetAgentClient.validateApiKey(apiKeyToCheck);
+      if (!validationResult.valid) {
+        setApiHealthStatus("needs-api-key");
+        setApiHealthError(validationResult.message || "API key is invalid");
+        return false;
+      }
+      return true;
+    } catch (error) {
+      // If validation fails, might be connection issue, don't change status
+      return true; // Assume valid if we can't check
+    }
+  };
+
+  // Handle API errors and check for invalid API key
+  const handleApiError = (error: unknown) => {
+    if (error && typeof error === "object" && "isAuthError" in error && (error as any).isAuthError) {
+      // API key is invalid, show API key form
+      setApiHealthStatus("needs-api-key");
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : (error as any).message || "API key is invalid or expired. Please enter a new API key.";
+      setApiHealthError(errorMessage);
+      return true; // Indicates auth error was handled
+    }
+    return false; // Not an auth error
+  };
+
+  // Wizard step state
+  const [currentStep, setCurrentStep] = useState(1);
+  const totalSteps = newNodeForm.target === "host" ? 3 : 4; // Host has one less step (no connection)
+
+  // Cloud Zones
+  const cloudZones = [
+    // US Regions
+    { region: "US Central (Iowa)", zones: ["us-central1-a", "us-central1-b", "us-central1-c", "us-central1-f"] },
+    { region: "US East (South Carolina)", zones: ["us-east1-b", "us-east1-c", "us-east1-d"] },
+    { region: "US East (Virginia)", zones: ["us-east4-a", "us-east4-b", "us-east4-c"] },
+    { region: "US West (Oregon)", zones: ["us-west1-a", "us-west1-b", "us-west1-c"] },
+    { region: "US West (California)", zones: ["us-west2-a", "us-west2-b", "us-west2-c"] },
+    { region: "US West (Los Angeles)", zones: ["us-west3-a", "us-west3-b", "us-west3-c"] },
+    { region: "US West (Salt Lake City)", zones: ["us-west4-a", "us-west4-b", "us-west4-c"] },
+    // Europe Regions
+    { region: "Europe West (Belgium)", zones: ["europe-west1-b", "europe-west1-c", "europe-west1-d"] },
+    { region: "Europe West (London)", zones: ["europe-west2-a", "europe-west2-b", "europe-west2-c"] },
+    { region: "Europe West (Frankfurt)", zones: ["europe-west3-a", "europe-west3-b", "europe-west3-c"] },
+    { region: "Europe West (Netherlands)", zones: ["europe-west4-a", "europe-west4-b", "europe-west4-c"] },
+    { region: "Europe West (Milan)", zones: ["europe-west6-a", "europe-west6-b", "europe-west6-c"] },
+    { region: "Europe West (Paris)", zones: ["europe-west9-a", "europe-west9-b", "europe-west9-c"] },
+    { region: "Europe West (Warsaw)", zones: ["europe-west10-a", "europe-west10-b", "europe-west10-c"] },
+    { region: "Europe Central (Belgium)", zones: ["europe-central2-a", "europe-central2-b", "europe-central2-c"] },
+    { region: "Europe North (Finland)", zones: ["europe-north1-a", "europe-north1-b", "europe-north1-c"] },
+    { region: "Europe South (Madrid)", zones: ["europe-southwest1-a", "europe-southwest1-b", "europe-southwest1-c"] },
+    // Asia Regions
+    { region: "Asia East (Taiwan)", zones: ["asia-east1-a", "asia-east1-b", "asia-east1-c"] },
+    { region: "Asia Northeast (Tokyo)", zones: ["asia-northeast1-a", "asia-northeast1-b", "asia-northeast1-c"] },
+    { region: "Asia Northeast (Osaka)", zones: ["asia-northeast2-a", "asia-northeast2-b", "asia-northeast2-c"] },
+    { region: "Asia Northeast (Seoul)", zones: ["asia-northeast3-a", "asia-northeast3-b", "asia-northeast3-c"] },
+    { region: "Asia South (Mumbai)", zones: ["asia-south1-a", "asia-south1-b", "asia-south1-c"] },
+    { region: "Asia South (Delhi)", zones: ["asia-south2-a", "asia-south2-b", "asia-south2-c"] },
+    { region: "Asia Southeast (Singapore)", zones: ["asia-southeast1-a", "asia-southeast1-b", "asia-southeast1-c"] },
+    { region: "Asia Southeast (Jakarta)", zones: ["asia-southeast2-a", "asia-southeast2-b", "asia-southeast2-c"] },
+    { region: "Asia Pacific (Hong Kong)", zones: ["asia-east2-a", "asia-east2-b", "asia-east2-c"] },
+    // Other Regions
+    { region: "South America (São Paulo)", zones: ["southamerica-east1-a", "southamerica-east1-b", "southamerica-east1-c"] },
+    { region: "South America (Santiago)", zones: ["southamerica-west1-a", "southamerica-west1-b", "southamerica-west1-c"] },
+    { region: "Australia (Sydney)", zones: ["australia-southeast1-a", "australia-southeast1-b", "australia-southeast1-c"] },
+    { region: "Australia (Melbourne)", zones: ["australia-southeast2-a", "australia-southeast2-b", "australia-southeast2-c"] },
+    { region: "North America (Montreal)", zones: ["northamerica-northeast1-a", "northamerica-northeast1-b", "northamerica-northeast1-c"] },
+    { region: "North America (Toronto)", zones: ["northamerica-northeast2-a", "northamerica-northeast2-b", "northamerica-northeast2-c"] },
+  ];
+
+  // Update step when target changes
+  useEffect(() => {
+    if (newNodeForm.target === "host" && currentStep === 2) {
+      // If switching to host and we're on connection step, go to node config
+      setCurrentStep(2);
+    } else if (newNodeForm.target === "remote" && currentStep === 2) {
+      // If switching to remote and we're on step 2, stay on step 2 (connection)
+      // No change needed
+    }
+  }, [newNodeForm.target]);
+
+  const onAddOpen = () => {
+    setCurrentStep(1); // Reset to first step
+    // Auto-set cluster name, ID, and location from existing nodes if available
+    if (nodes.length > 0) {
+      if (nodes[0].clusterName) {
+        updateNewNodeForm("clusterName", nodes[0].clusterName);
+      }
+      if (nodes[0].clusterId) {
+        updateNewNodeForm("clusterId", nodes[0].clusterId);
+      }
+      if (nodes[0].location) {
+        if (nodes[0].location.country) {
+          updateNewNodeForm("location.country", nodes[0].location.country);
+        }
+        if (nodes[0].location.city) {
+          updateNewNodeForm("location.city", nodes[0].location.city);
+        }
+        if (nodes[0].location.zone) {
+          updateNewNodeForm("location.zone", nodes[0].location.zone);
+        }
+      }
+    }
+    setIsAddOpen(true);
+  };
+  const onAddClose = () => {
+    // Clear polling interval if exists
+    if (pollingInterval) {
+      clearTimeout(pollingInterval);
+      setPollingInterval(null);
+    }
+    setCurrentStep(1); // Reset step
+    setIsAddOpen(false);
+  };
+
+  const nextStep = () => {
+    if (currentStep < totalSteps) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  // Load API key from localStorage on mount
+  useEffect(() => {
+    const storedApiKey = localStorage.getItem("subnet_agent_api_key") || "";
+    setApiKey(storedApiKey);
+  }, []);
+
+  // Health check on mount and periodically
+  useEffect(() => {
+    const checkApiHealth = async () => {
+      try {
+        setApiHealthStatus("checking");
+        setApiHealthError(null);
+        
+        // Check if we have API key
+        const storedApiKey = localStorage.getItem("subnet_agent_api_key") || "";
+        
+        // Try health check (may work without API key)
+        await subnetAgentClient.healthCheck();
+        
+        // If health check succeeds but no API key, show API key form
+        if (!storedApiKey && !process.env.NEXT_PUBLIC_SUBNET_AGENT_API_KEY) {
+          setApiHealthStatus("needs-api-key");
+          return;
+        }
+        
+        // If we have API key, validate it
+        if (storedApiKey || process.env.NEXT_PUBLIC_SUBNET_AGENT_API_KEY) {
+          const apiKeyToCheck = storedApiKey || process.env.NEXT_PUBLIC_SUBNET_AGENT_API_KEY || "";
+          try {
+            const validationResult = await subnetAgentClient.validateApiKey(apiKeyToCheck);
+            if (!validationResult.valid) {
+              setApiHealthStatus("needs-api-key");
+              setApiHealthError(validationResult.message || "API key is invalid");
+              return;
+            }
+          } catch (validationError) {
+            // If validation fails, might be connection issue, don't change status
+            console.error("Failed to validate API key:", validationError);
+          }
+        }
+        
+        setApiHealthStatus("healthy");
+      } catch (error) {
+        console.error("API health check failed:", error);
+        // Check if it's an auth error
+        if (handleApiError(error)) {
+          return; // Auth error handled
+        }
+        setApiHealthStatus("unhealthy");
+        setApiHealthError(
+          error instanceof Error
+            ? error.message
+            : "Failed to connect to Subnet Agent API",
+        );
+      }
+    };
+
+    checkApiHealth();
+    
+    // Check API key validity periodically (every 5 minutes)
+    const interval = setInterval(() => {
+      const storedApiKey = localStorage.getItem("subnet_agent_api_key") || "";
+      if (storedApiKey || process.env.NEXT_PUBLIC_SUBNET_AGENT_API_KEY) {
+        checkApiKeyValidity();
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(interval);
+  }, [apiKey]);
+
+  // Handle save API key
+  const handleSaveApiKey = async () => {
+    if (!apiKeyInput.trim()) return;
+
+    try {
+      setApiHealthStatus("checking");
+      setApiHealthError(null);
+      
+      // Validate API key first
+      const validationResult = await subnetAgentClient.validateApiKey(apiKeyInput.trim());
+      
+      if (!validationResult.valid) {
+        setApiHealthError(validationResult.message || "API key is invalid");
+        setApiHealthStatus("needs-api-key");
+        return;
+      }
+      
+      // API key is valid, save it
+      localStorage.setItem("subnet_agent_api_key", apiKeyInput.trim());
+      setApiKey(apiKeyInput.trim());
+      
+      // Update client
+      subnetAgentClient.setApiKey(apiKeyInput.trim());
+      
+      // Verify with health check
+      await subnetAgentClient.healthCheck();
+      setApiHealthStatus("healthy");
+      setApiKeyInput("");
+      setApiHealthError(null);
+    } catch (error) {
+      setApiHealthError(
+        error instanceof Error
+          ? error.message
+          : "Failed to validate API key. Please check your connection and try again.",
+      );
+      setApiHealthStatus("needs-api-key");
+    }
+  };
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingInterval) {
+        clearTimeout(pollingInterval);
+      }
+    };
+  }, [pollingInterval]);
   const onEditOpen = () => setIsEditOpen(true);
   const onEditClose = () => setIsEditOpen(false);
   const onDetailOpen = () => setIsDetailOpen(true);
@@ -396,6 +671,7 @@ export default function NodesManagementPage() {
   const handleAddNode = () => {
     // Reset form
     setNewNodeForm({
+      target: "host",
       serverIP: "",
       sshPort: "22",
       sshUser: "root",
@@ -406,7 +682,7 @@ export default function NodesManagementPage() {
       description: "",
       clusterId: "",
       clusterName: "",
-      role: "worker",
+      roles: ["server", "agent"],
       k3sVersion: "latest",
       installMode: "agent",
       serverURL: "",
@@ -462,148 +738,319 @@ export default function NodesManagementPage() {
     }, 2000);
   };
 
-  const handleInstallK3s = async () => {
-    // Validation
-    if (
-      !newNodeForm.serverIP ||
-      !newNodeForm.name ||
-      !newNodeForm.clusterName
-    ) {
-      alert(
-        "Please fill in required fields: Server IP, Node Name, and Cluster Name",
-      );
+  // Poll job status
+  const pollJobStatus = async (jobId: string) => {
+    try {
+      const status = await subnetAgentClient.getJobStatus(jobId);
+      
+      // Update installation status based on job status
+      const currentStep = status.steps.find(
+        (s) => s.status === "running" || s.status === "pending",
+      ) || status.steps[status.steps.length - 1];
 
-      return;
-    }
+      const allLogs = status.steps.flatMap((step) => {
+        if (step.output) {
+          return [`[${step.name}] ${step.output}`];
+        }
+        return [];
+      });
 
-    if (newNodeForm.authMethod === "key" && !newNodeForm.sshKey) {
-      alert("Please provide SSH key for authentication");
+      setInstallationStatus((prev) => ({
+        step: currentStep?.name || status.message,
+        status:
+          status.status === "completed"
+            ? "success"
+            : status.status === "failed"
+              ? "error"
+              : status.status === "running"
+                ? "installing"
+                : "connecting",
+        message: status.message,
+        logs: allLogs.length > 0 ? allLogs : prev.logs,
+        jobId: status.job_id,
+      }));
 
-      return;
-    }
+      // Continue polling if job is still running
+      if (status.status === "pending" || status.status === "running") {
+        // Clear previous interval
+        if (pollingInterval) {
+          clearTimeout(pollingInterval);
+        }
+        const interval = setTimeout(() => pollJobStatus(jobId), 2000);
+        setPollingInterval(interval);
+      } else if (status.status === "completed") {
+        // Clear polling when completed
+        if (pollingInterval) {
+          clearTimeout(pollingInterval);
+          setPollingInterval(null);
+        }
+        // Job completed successfully - fetch nodes and add to list
+        try {
+          // Check API key validity before fetching nodes
+          const isApiKeyValid = await checkApiKeyValidity();
+          if (!isApiKeyValid) {
+            setInstallationStatus((prev) => ({
+              ...prev,
+              status: "error",
+              message: "API key is invalid. Please update your API key.",
+            }));
+            return;
+          }
 
-    if (newNodeForm.authMethod === "password" && !newNodeForm.sshPassword) {
-      alert("Please provide SSH password for authentication");
+          const nodesResponse = await subnetAgentClient.getNodes({
+            target: newNodeForm.target === "host" ? "local" : "remote",
+            ...(newNodeForm.target === "remote"
+              ? {
+                  server_ip: newNodeForm.serverIP,
+                  ssh_user: newNodeForm.sshUser,
+                  ssh_key: newNodeForm.sshKey,
+                  ssh_password: newNodeForm.sshPassword,
+                  auth_method: newNodeForm.authMethod,
+                }
+              : {}),
+          });
 
-      return;
-    }
+          // Get cluster name and ID - use from existing nodes if available
+          const clusterNameForNode =
+            nodes.length > 0
+              ? nodes[0].clusterName || newNodeForm.clusterName
+              : newNodeForm.clusterName;
+          const clusterIdForNode =
+            nodes.length > 0
+              ? nodes[0].clusterId || newNodeForm.clusterId
+              : newNodeForm.clusterId;
+          
+          // Get location from existing nodes if available
+          const locationForNode =
+            nodes.length > 0 && nodes[0].location
+              ? {
+                  country: nodes[0].location.country || newNodeForm.location.country,
+                  region: nodes[0].location.region || newNodeForm.location.region,
+                  city: nodes[0].location.city || newNodeForm.location.city,
+                  zone: nodes[0].location.zone || newNodeForm.location.zone,
+                }
+              : newNodeForm.location;
 
-    if (
-      newNodeForm.installMode === "agent" &&
-      (!newNodeForm.serverURL || !newNodeForm.token)
-    ) {
-      alert("For agent nodes, please provide Server URL and Token");
+          // Convert API nodes to our Node format and add them
+          nodesResponse.nodes.forEach((apiNode) => {
+            const newNode: Node = {
+              id: `node-${Date.now()}-${apiNode.name}`,
+              providerId: "provider-1",
+              name: newNodeForm.name || apiNode.name,
+              nodeName: apiNode.name,
+              description:
+                newNodeForm.description ||
+                `k3s ${apiNode.roles.join(",")} node`,
+              clusterId: clusterIdForNode || `cluster-${Date.now()}`,
+              clusterName: clusterNameForNode,
+              role: apiNode.roles.includes("control-plane") || apiNode.roles.includes("master")
+                ? "master"
+                : "worker",
+              status: apiNode.status === "Ready" ? "active" : "inactive",
+              kubernetesVersion: apiNode.version,
+              containerRuntime: apiNode.container_runtime,
+              osImage: apiNode.os_image,
+              kernelVersion: apiNode.kernel_version,
+              kubeletVersion: apiNode.version,
+              labels: apiNode.labels,
+              taints: [],
+              specs: {
+                cpu: 0, // Will be auto-detected
+                memory: 0,
+                storage: 0,
+                bandwidth: 0,
+                pods: 110,
+              },
+              usage: {
+                cpu: 0,
+                memory: 0,
+                storage: 0,
+                pods: 0,
+              },
+              pods: {
+                running: 0,
+                pending: 0,
+                failed: 0,
+                succeeded: 0,
+                total: 0,
+                capacity: 110,
+              },
+              location: locationForNode,
+              uptime: 100,
+              reputation: 0,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            };
+            addNode(newNode);
+          });
 
-      return;
-    }
-
-    setInstallationStatus({
-      step: "Installing k3s",
-      status: "installing",
-      message: "Starting k3s installation...",
-      logs: [
-        `Connecting to ${newNodeForm.serverIP}...`,
-        "Checking system requirements...",
-      ],
-    });
-
-    // Simulate installation steps
-    const steps = [
-      {
-        delay: 1000,
-        message: "✓ System requirements checked",
-        step: "installing",
-      },
-      { delay: 2000, message: "Downloading k3s...", step: "installing" },
-      { delay: 3000, message: "✓ k3s downloaded", step: "installing" },
-      { delay: 2000, message: "Installing k3s...", step: "installing" },
-      {
-        delay: 3000,
-        message: "✓ k3s installed successfully",
-        step: "configuring",
-      },
-      { delay: 2000, message: "Configuring k3s node...", step: "configuring" },
-      { delay: 2000, message: "✓ Node configured", step: "verifying" },
-      { delay: 2000, message: "Verifying installation...", step: "verifying" },
-      { delay: 2000, message: "✓ k3s is running", step: "success" },
-      {
-        delay: 1000,
-        message: "✓ Node registered successfully",
-        step: "success",
-      },
-    ];
-
-    for (const step of steps) {
-      await new Promise((resolve) => setTimeout(resolve, step.delay));
+          setTimeout(() => {
+            onAddClose();
+            setInstallationStatus({
+              step: "",
+              status: "idle",
+              message: "",
+              logs: [],
+              jobId: undefined,
+            });
+          }, 2000);
+        } catch (error) {
+          console.error("Failed to fetch nodes after installation:", error);
+          // Check if it's an auth error
+          if (handleApiError(error)) {
+            setInstallationStatus((prev) => ({
+              ...prev,
+              status: "error",
+              message: "API key is invalid. Please update your API key.",
+            }));
+            return;
+          }
+          setInstallationStatus((prev) => ({
+            ...prev,
+            status: "error",
+            message: "Installation completed but failed to fetch node info",
+          }));
+        }
+      } else if (status.status === "failed") {
+        // Clear polling when failed
+        if (pollingInterval) {
+          clearTimeout(pollingInterval);
+          setPollingInterval(null);
+        }
+        setInstallationStatus((prev) => ({
+          ...prev,
+          status: "error",
+          message: "Installation failed",
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to poll job status:", error);
+      // Check if it's an auth error
+      if (handleApiError(error)) {
+        return; // Auth error handled, stop polling
+      }
       setInstallationStatus((prev) => ({
         ...prev,
-        status: step.step as any,
-        logs: [...prev.logs, step.message],
+        status: "error",
+        message: `Failed to check job status: ${error instanceof Error ? error.message : "Unknown error"}`,
       }));
     }
+  };
 
-    // After successful installation, create node entry
-    const newNode: Node = {
-      id: `node-${Date.now()}`,
-      providerId: "provider-1",
-      name: newNodeForm.name,
-      nodeName: newNodeForm.serverIP,
-      description:
-        newNodeForm.description ||
-        `k3s ${newNodeForm.role} node at ${newNodeForm.serverIP}`,
-      clusterId: newNodeForm.clusterId || `cluster-${Date.now()}`,
-      clusterName: newNodeForm.clusterName,
-      role: newNodeForm.role,
-      status: "active",
-      kubernetesVersion: "v1.28.0+k3s1", // k3s version format
-      containerRuntime: "containerd",
-      osImage: "Detected from server",
-      kernelVersion: "Auto-detected",
-      kubeletVersion: "v1.28.0+k3s1",
-      labels: newNodeForm.labels.reduce(
-        (acc, label) => ({ ...acc, [label.key]: label.value }),
-        {},
-      ),
-      taints: newNodeForm.taints,
-      specs: {
-        cpu: parseInt(newNodeForm.specs.cpu) || 0,
-        memory: parseInt(newNodeForm.specs.memory) || 0,
-        storage: parseInt(newNodeForm.specs.storage) || 0,
-        bandwidth: parseInt(newNodeForm.specs.bandwidth) || 0,
-        pods: parseInt(newNodeForm.specs.pods) || 110,
-      },
-      usage: {
-        cpu: 0,
-        memory: 0,
-        storage: 0,
-        pods: 0,
-      },
-      pods: {
-        running: 0,
-        pending: 0,
-        failed: 0,
-        succeeded: 0,
-        total: 0,
-        capacity: parseInt(newNodeForm.specs.pods) || 110,
-      },
-      location: newNodeForm.location,
-      uptime: 100,
-      reputation: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+  const handleInstallK3s = async () => {
+    // Validation
+    if (!newNodeForm.name) {
+      alert("Please fill in required fields: Node Name");
 
-    addNode(newNode);
+      return;
+    }
 
-    setTimeout(() => {
-      onAddClose();
+    // Only require cluster name if no existing nodes
+    if (nodes.length === 0 && !newNodeForm.clusterName) {
+      alert("Please fill in required fields: Cluster Name");
+
+      return;
+    }
+
+    // Only require server connection info for remote targets
+    if (newNodeForm.target === "remote") {
+      if (!newNodeForm.serverIP) {
+        alert("Please fill in required fields: Server IP");
+
+        return;
+      }
+
+      if (newNodeForm.authMethod === "key" && !newNodeForm.sshKey) {
+        alert("Please provide SSH key for authentication");
+
+        return;
+      }
+
+      if (newNodeForm.authMethod === "password" && !newNodeForm.sshPassword) {
+        alert("Please provide SSH password for authentication");
+
+        return;
+      }
+    }
+
+
+    try {
       setInstallationStatus({
-        step: "",
-        status: "idle",
-        message: "",
+        step: "Creating installation job",
+        status: "connecting",
+        message: "Submitting installation request...",
         logs: [],
+        jobId: undefined,
       });
-    }, 2000);
+
+      // Get cluster name - use from existing nodes if available
+      const clusterName =
+        nodes.length > 0
+          ? nodes[0].clusterName || newNodeForm.clusterName
+          : newNodeForm.clusterName;
+
+      // Prepare request
+      const request: InstallK3sRequest = {
+        target: newNodeForm.target === "host" ? "local" : "remote",
+        node_name: newNodeForm.name,
+        cluster_name: clusterName,
+        install_mode: newNodeForm.installMode,
+        k3s_version: newNodeForm.k3sVersion === "latest" ? undefined : newNodeForm.k3sVersion,
+        flannel_backend: newNodeForm.flannelBackend,
+        ...(newNodeForm.target === "remote"
+          ? {
+              server_ip: newNodeForm.serverIP,
+              ssh_port: parseInt(newNodeForm.sshPort) || 22,
+              ssh_user: newNodeForm.sshUser,
+              ...(newNodeForm.authMethod === "key"
+                ? { ssh_key: newNodeForm.sshKey, auth_method: "key" }
+                : {
+                    ssh_password: newNodeForm.sshPassword,
+                    auth_method: "password",
+                  }),
+            }
+          : {}),
+        // Server URL and token will be automatically handled by Subnet Agent
+      };
+
+      // Call API
+      const response = await subnetAgentClient.installK3s(request);
+
+      setInstallationStatus({
+        step: "Job created",
+        status: "connecting",
+        message: response.message,
+        logs: [response.message],
+        jobId: response.job_id,
+      });
+
+      // Start polling
+      pollJobStatus(response.job_id);
+    } catch (error) {
+      console.error("Failed to install k3s:", error);
+      // Check if it's an auth error
+      if (handleApiError(error)) {
+        setInstallationStatus({
+          step: "Error",
+          status: "error",
+          message: "API key is invalid or expired. Please update your API key.",
+          logs: [
+            `Error: ${error instanceof Error ? error.message : "API key is invalid or expired"}`,
+          ],
+          jobId: undefined,
+        });
+        return;
+      }
+      setInstallationStatus({
+        step: "Error",
+        status: "error",
+        message: `Failed to start installation: ${error instanceof Error ? error.message : "Unknown error"}`,
+        logs: [
+          `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        ],
+        jobId: undefined,
+      });
+    }
   };
 
   const updateNewNodeForm = (field: string, value: any) => {
@@ -678,7 +1125,7 @@ export default function NodesManagementPage() {
     description: "",
     clusterId: "",
     clusterName: "",
-    role: "worker" as "master" | "worker" | "control-plane",
+    roles: ["server", "agent"] as Array<"server" | "agent">,
     status: "active" as Node["status"],
     location: {
       country: "",
@@ -702,7 +1149,7 @@ export default function NodesManagementPage() {
       description: node.description,
       clusterId: node.clusterId || "",
       clusterName: node.clusterName || "",
-      role: node.role || "worker",
+      roles: node.role === "master" || node.role === "control-plane" ? ["server"] : ["agent"],
       status: node.status,
       location: {
         country: node.location.country,
@@ -739,7 +1186,7 @@ export default function NodesManagementPage() {
       description: editNodeForm.description,
       clusterId: editNodeForm.clusterId || selectedNode.clusterId,
       clusterName: editNodeForm.clusterName,
-      role: editNodeForm.role,
+      role: editNodeForm.roles.includes("server") ? "master" : "worker", // Convert k3s roles to Node type
       status: editNodeForm.status,
       location: editNodeForm.location,
       labels: editNodeForm.labels.reduce(
@@ -885,6 +1332,255 @@ export default function NodesManagementPage() {
         return null;
     }
   };
+
+  // Show health check status
+  if (apiHealthStatus === "checking") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-background/50">
+        <div className="container mx-auto px-6 py-8 max-w-7xl">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <Card className="subnet-card max-w-md">
+              <CardBody className="p-6 text-center">
+                <Activity className="mx-auto mb-4 text-primary animate-pulse" size={48} />
+                <h3 className="text-lg font-semibold mb-2">Checking API Connection</h3>
+                <p className="text-sm text-default-600">
+                  Verifying Subnet Agent API health...
+                </p>
+              </CardBody>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (apiHealthStatus === "needs-api-key") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-background/50">
+        <div className="container mx-auto px-6 py-8 max-w-7xl">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <Card className="subnet-card max-w-2xl">
+              <CardBody className="p-6">
+                <div className="text-center mb-6">
+                  <AlertCircle className="mx-auto mb-4 text-warning" size={48} />
+                  <h3 className="text-lg font-semibold mb-2">API Key Required</h3>
+                  <p className="text-sm text-default-600">
+                    Please enter your Subnet Agent API key to manage nodes.
+                  </p>
+                </div>
+
+                <div className="bg-default-50 p-4 rounded-lg mb-4">
+                  <h4 className="font-semibold mb-3 text-sm">How to Get Your API Key:</h4>
+                  <div className="space-y-3 text-sm text-default-600">
+                    <div>
+                      <p className="font-semibold mb-1">Step 1: Open Subnet Agent</p>
+                      <p>Make sure Subnet Agent is running on your computer.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-1">Step 2: Access Settings</p>
+                      <ul className="space-y-1 ml-4 list-disc">
+                        <li><strong>Windows:</strong> Right-click the Subnet Agent icon in the system tray and select "Settings"</li>
+                        <li><strong>macOS:</strong> Click the Subnet Agent icon in the menu bar and select "Settings"</li>
+                        <li><strong>Linux:</strong> Open Subnet Agent and go to Settings menu</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-1">Step 3: Find API Key</p>
+                      <p>In the Settings window, look for the "API Key" section. You can either:</p>
+                      <ul className="space-y-1 ml-4 list-disc mt-1">
+                        <li>Copy the existing API key if one is already generated</li>
+                        <li>Click "Generate New API Key" to create a new one</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-1">Step 4: Copy and Paste</p>
+                      <p>Copy the API key and paste it in the field below.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      API Key <span className="text-danger">*</span>
+                    </label>
+                    <Input
+                      type="password"
+                      placeholder="Enter your API key"
+                      value={apiKeyInput}
+                      onChange={(e) => setApiKeyInput(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === "Enter" && apiKeyInput.trim()) {
+                          handleSaveApiKey();
+                        }
+                      }}
+                    />
+                    <p className="text-xs text-default-500 mt-1">
+                      This key will be stored locally in your browser for future use
+                    </p>
+                    {apiHealthError && (
+                      <p className="text-xs text-danger mt-2">
+                        {apiHealthError}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    color="primary"
+                    className="w-full"
+                    isDisabled={!apiKeyInput.trim()}
+                    onPress={handleSaveApiKey}
+                  >
+                    Save API Key
+                  </Button>
+                </div>
+              </CardBody>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (apiHealthStatus === "unhealthy") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-background/50">
+        <div className="container mx-auto px-6 py-8 max-w-7xl">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <Card className="subnet-card max-w-2xl border-danger">
+              <CardBody className="p-6">
+                <div className="text-center mb-6">
+                  <AlertCircle className="mx-auto mb-4 text-danger" size={48} />
+                  <h3 className="text-lg font-semibold mb-2 text-danger">Unable to Connect to Subnet Agent</h3>
+                  <p className="text-sm text-default-600">
+                    The system cannot connect to Subnet Agent. Please follow these steps:
+                  </p>
+                </div>
+                
+                <div className="space-y-4 text-left">
+                  <div className="bg-default-50 p-4 rounded-lg">
+                    <h4 className="font-semibold mb-3 text-sm">Step 1: Download and Install Subnet Agent</h4>
+                    <p className="text-sm text-default-600 mb-3">
+                      Download Subnet Agent for your operating system:
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
+                      <Button
+                        color="primary"
+                        variant="flat"
+                        size="sm"
+                        className="w-full"
+                        onPress={() => {
+                          window.open("https://github.com/subnet/subnet-agent/releases/latest", "_blank");
+                        }}
+                      >
+                        Windows
+                      </Button>
+                      <Button
+                        color="primary"
+                        variant="flat"
+                        size="sm"
+                        className="w-full"
+                        onPress={() => {
+                          window.open("https://github.com/subnet/subnet-agent/releases/latest", "_blank");
+                        }}
+                      >
+                        macOS
+                      </Button>
+                      <Button
+                        color="primary"
+                        variant="flat"
+                        size="sm"
+                        className="w-full"
+                        onPress={() => {
+                          window.open("https://github.com/subnet/subnet-agent/releases/latest", "_blank");
+                        }}
+                      >
+                        Linux
+                      </Button>
+                    </div>
+                    <div className="space-y-2 text-sm text-default-600">
+                      <p className="font-semibold">Installation Instructions:</p>
+                      <ul className="space-y-2 ml-4 list-disc">
+                        <li><strong>Windows:</strong> Run the downloaded .exe installer and follow the on-screen instructions. Subnet Agent will automatically set up WSL2 if needed.</li>
+                        <li><strong>macOS:</strong> Open the downloaded .dmg file, drag Subnet Agent to Applications folder, then run it from Applications.</li>
+                        <li><strong>Linux:</strong> Extract the downloaded archive and run the install script, or use the package manager for your distribution.</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="bg-default-50 p-4 rounded-lg">
+                    <h4 className="font-semibold mb-2 text-sm">Step 2: Start Subnet Agent</h4>
+                    <p className="text-sm text-default-600 mb-2">
+                      After installation, start the Subnet Agent program:
+                    </p>
+                    <ul className="text-sm text-default-600 space-y-1 ml-4 list-disc">
+                      <li><strong>Windows:</strong> Find Subnet Agent in the Start menu or system tray</li>
+                      <li><strong>macOS:</strong> Open Subnet Agent from Applications folder</li>
+                      <li><strong>Linux:</strong> Run Subnet Agent from the terminal or application menu</li>
+                    </ul>
+                    <p className="text-sm text-default-600 mt-2">
+                      Make sure the program is running before proceeding.
+                    </p>
+                  </div>
+
+                  <div className="bg-default-50 p-4 rounded-lg">
+                    <h4 className="font-semibold mb-2 text-sm">Step 3: Check Your Internet Connection</h4>
+                    <p className="text-sm text-default-600 mb-2">
+                      Make sure your computer is connected to the internet and no firewall is blocking the connection.
+                    </p>
+                  </div>
+
+                  <div className="bg-default-50 p-4 rounded-lg">
+                    <h4 className="font-semibold mb-2 text-sm">Step 4: Try Again</h4>
+                    <p className="text-sm text-default-600 mb-2">
+                      After completing the steps above, click the "Retry Connection" button below.
+                    </p>
+                  </div>
+                </div>
+
+                {apiHealthError && (
+                  <div className="mt-4 p-3 bg-danger-50 border border-danger-200 rounded-lg">
+                    <p className="text-xs text-danger font-semibold mb-1">Error Details:</p>
+                    <p className="text-xs text-danger font-mono break-all">
+                      {apiHealthError}
+                    </p>
+                  </div>
+                )}
+
+                <div className="mt-6 text-center">
+                  <Button
+                    color="primary"
+                    size="lg"
+                    onPress={() => {
+                      setApiHealthStatus("checking");
+                      subnetAgentClient.healthCheck()
+                        .then(() => {
+                          const storedApiKey = localStorage.getItem("subnet_agent_api_key") || "";
+                          if (!storedApiKey && !process.env.NEXT_PUBLIC_SUBNET_AGENT_API_KEY) {
+                            setApiHealthStatus("needs-api-key");
+                          } else {
+                            setApiHealthStatus("healthy");
+                          }
+                        })
+                        .catch((error) => {
+                          setApiHealthStatus("unhealthy");
+                          setApiHealthError(
+                            error instanceof Error
+                              ? error.message
+                              : "Failed to connect to Subnet Agent API",
+                          );
+                        });
+                    }}
+                  >
+                    Retry Connection
+                  </Button>
+                </div>
+              </CardBody>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-background/50">
@@ -1215,13 +1911,254 @@ export default function NodesManagementPage() {
           {(onClose) => (
             <>
               <ModalHeader>
-                Add New k3s Node - Automated Installation
+                <div className="w-full">
+                  <h2 className="text-xl font-bold">Add New k3s Node</h2>
+                  <p className="text-sm text-default-600 mt-1">
+                    Step {currentStep} of {totalSteps}
+                  </p>
+                  {/* Progress Bar */}
+                  <div className="mt-4">
+                    <Progress
+                      value={(currentStep / totalSteps) * 100}
+                      className="w-full"
+                      color="primary"
+                    />
+                  </div>
+                  {/* Step Indicators */}
+                  <div className="flex items-center justify-between mt-4">
+                    {[
+                      "Target",
+                      ...(newNodeForm.target === "remote" ? ["Connection"] : []),
+                      "Node Config",
+                      "Review",
+                    ].map((stepName, index) => {
+                      const stepNum = index + 1;
+                      const isActive = stepNum === currentStep;
+                      const isCompleted = stepNum < currentStep;
+                      return (
+                        <div
+                          key={stepNum}
+                          className={`flex flex-col items-center flex-1 ${
+                            isActive ? "text-primary" : isCompleted ? "text-success" : "text-default-400"
+                          }`}
+                        >
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm ${
+                              isActive
+                                ? "bg-primary text-white"
+                                : isCompleted
+                                  ? "bg-success text-white"
+                                  : "bg-default-200"
+                            }`}
+                          >
+                            {isCompleted ? (
+                              <CheckCircle size={16} />
+                            ) : (
+                              stepNum
+                            )}
+                          </div>
+                          <span className="text-xs mt-1 text-center">{stepName}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </ModalHeader>
               <ModalBody>
                 <div className="space-y-6">
-                  <Tabs aria-label="Node configuration">
-                    <Tab key="connection" title="Server Connection">
-                      <div className="space-y-4 pt-4">
+                  {/* Step Content */}
+                  {currentStep === 1 && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold mb-4">Step 1: Select Target</h3>
+                      <p className="text-sm text-default-600 mb-4">
+                        Choose whether to install k3s on the local host or a remote server.
+                      </p>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-2">
+                            Target <span className="text-danger">*</span>
+                          </label>
+                          <Select
+                            selectedKeys={[newNodeForm.target]}
+                            onSelectionChange={(keys) => {
+                              updateNewNodeForm(
+                                "target",
+                                Array.from(keys)[0] as "host" | "remote",
+                              );
+                            }}
+                          >
+                            <SelectItem key="host">Host</SelectItem>
+                            <SelectItem key="remote">Remote</SelectItem>
+                          </Select>
+                        </div>
+
+                        {newNodeForm.target === "remote" && (
+                          <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+                            <p className="text-sm text-default-600 mb-2">
+                              <strong>How it works:</strong> Enter your server SSH
+                              credentials. The system will automatically connect,
+                              install k3s, and configure the node.
+                            </p>
+                          </div>
+                        )}
+
+                        {newNodeForm.target === "host" && (
+                          <div className="p-4 bg-success/5 rounded-lg border border-success/20">
+                            <p className="text-sm text-default-600 mb-2">
+                              <strong>Host Mode:</strong> Installing k3s on the local
+                              host machine. No SSH credentials required.
+                            </p>
+                          </div>
+                        )}
+
+                        {newNodeForm.target === "remote" && (
+                          <>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium mb-2">
+                                  Server IP Address{" "}
+                                  <span className="text-danger">*</span>
+                                </label>
+                                <Input
+                                  placeholder="192.168.1.100"
+                                  value={newNodeForm.serverIP}
+                                  onChange={(e) =>
+                                    updateNewNodeForm("serverIP", e.target.value)
+                                  }
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium mb-2">
+                                  SSH Port
+                                </label>
+                                <Input
+                                  placeholder="22"
+                                  type="number"
+                                  value={newNodeForm.sshPort}
+                                  onChange={(e) =>
+                                    updateNewNodeForm("sshPort", e.target.value)
+                                  }
+                                />
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium mb-2">
+                                SSH User
+                              </label>
+                              <Input
+                                placeholder="root"
+                                value={newNodeForm.sshUser}
+                                onChange={(e) =>
+                                  updateNewNodeForm("sshUser", e.target.value)
+                                }
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium mb-2">
+                                Authentication Method
+                              </label>
+                              <Select
+                                selectedKeys={[newNodeForm.authMethod]}
+                                onSelectionChange={(keys) => {
+                                  updateNewNodeForm(
+                                    "authMethod",
+                                    Array.from(keys)[0] as "key" | "password",
+                                  );
+                                }}
+                              >
+                                <SelectItem key="key">SSH Key</SelectItem>
+                                <SelectItem key="password">Password</SelectItem>
+                              </Select>
+                            </div>
+
+                            {newNodeForm.authMethod === "key" ? (
+                              <div>
+                                <label className="block text-sm font-medium mb-2">
+                                  SSH Private Key{" "}
+                                  <span className="text-danger">*</span>
+                                </label>
+                                <textarea
+                                  className="w-full min-h-[120px] px-3 py-2 rounded-lg border border-default-200 bg-default-50 focus:outline-none focus:ring-2 focus:ring-primary font-mono text-xs"
+                                  placeholder="-----BEGIN RSA PRIVATE KEY-----&#10;...&#10;-----END RSA PRIVATE KEY-----"
+                                  value={newNodeForm.sshKey}
+                                  onChange={(e) =>
+                                    updateNewNodeForm("sshKey", e.target.value)
+                                  }
+                                />
+                                <p className="text-xs text-default-500 mt-1">
+                                  Paste your SSH private key here
+                                </p>
+                              </div>
+                            ) : (
+                              <div>
+                                <label className="block text-sm font-medium mb-2">
+                                  SSH Password{" "}
+                                  <span className="text-danger">*</span>
+                                </label>
+                                <Input
+                                  placeholder="Enter SSH password"
+                                  type="password"
+                                  value={newNodeForm.sshPassword}
+                                  onChange={(e) =>
+                                    updateNewNodeForm("sshPassword", e.target.value)
+                                  }
+                                />
+                              </div>
+                            )}
+
+                            <Button
+                              className="w-full"
+                              color="primary"
+                              variant="flat"
+                              onPress={handleTestConnection}
+                            >
+                              Test Connection
+                            </Button>
+                          </>
+                        )}
+
+                        {installationStatus.status !== "idle" &&
+                          installationStatus.step === "Testing connection" && (
+                            <Card className="subnet-card">
+                              <CardBody className="p-4">
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <Activity
+                                      className="text-primary"
+                                      size={16}
+                                    />
+                                    <span className="text-sm font-medium">
+                                      {installationStatus.message}
+                                    </span>
+                                  </div>
+                                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                                    {installationStatus.logs.map((log, idx) => (
+                                      <p
+                                        key={idx}
+                                        className="text-xs text-default-600 font-mono"
+                                      >
+                                        {log}
+                                      </p>
+                                    ))}
+                                  </div>
+                                </div>
+                              </CardBody>
+                            </Card>
+                          )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step 2: Connection (only for remote) */}
+                  {currentStep === 2 && newNodeForm.target === "remote" && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold mb-4">Step 2: Server Connection</h3>
+                      <p className="text-sm text-default-600 mb-4">
+                        Enter SSH credentials to connect to the remote server.
+                      </p>
+                      <div className="space-y-4">
                         <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
                           <p className="text-sm text-default-600 mb-2">
                             <strong>How it works:</strong> Enter your server SSH
@@ -1363,10 +2300,20 @@ export default function NodesManagementPage() {
                             </Card>
                           )}
                       </div>
-                    </Tab>
+                    </div>
+                  )}
 
-                    <Tab key="config" title="Node Config">
-                      <div className="space-y-4 pt-4">
+                  {/* Step 2/3: Node Config (step 2 for host, step 3 for remote) */}
+                  {((newNodeForm.target === "host" && currentStep === 2) ||
+                    (newNodeForm.target === "remote" && currentStep === 3)) && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold mb-4">
+                        {newNodeForm.target === "host" ? "Step 2" : "Step 3"}: Node Configuration
+                      </h3>
+                      <p className="text-sm text-default-600 mb-4">
+                        Configure basic node information and cluster settings.
+                      </p>
+                      <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <label className="block text-sm font-medium mb-2">
@@ -1382,31 +2329,31 @@ export default function NodesManagementPage() {
                           </div>
                           <div>
                             <label className="block text-sm font-medium mb-2">
-                              Node Role <span className="text-danger">*</span>
+                              Node Roles <span className="text-danger">*</span>
                             </label>
                             <Select
-                              selectedKeys={[newNodeForm.role]}
+                              selectionMode="multiple"
+                              selectedKeys={new Set(newNodeForm.roles)}
                               onSelectionChange={(keys) => {
-                                const role = Array.from(
-                                  keys,
-                                )[0] as Node["role"];
-
-                                updateNewNodeForm("role", role);
-                                // Auto-set install mode based on role
-                                updateNewNodeForm(
-                                  "installMode",
-                                  role === "worker" ? "agent" : "server",
-                                );
+                                const selectedRoles = Array.from(keys) as Array<
+                                  "server" | "agent"
+                                >;
+                                updateNewNodeForm("roles", selectedRoles);
+                                // Auto-set install mode based on roles
+                                // If has agent, must be agent mode; if server, must be server mode
+                                if (selectedRoles.includes("agent")) {
+                                  updateNewNodeForm("installMode", "agent");
+                                } else if (selectedRoles.includes("server")) {
+                                  updateNewNodeForm("installMode", "server");
+                                }
                               }}
                             >
-                              <SelectItem key="worker">Worker</SelectItem>
-                              <SelectItem key="master">
-                                Master (Server)
-                              </SelectItem>
-                              <SelectItem key="control-plane">
-                                Control Plane
-                              </SelectItem>
+                              <SelectItem key="server">Server (Control Plane)</SelectItem>
+                              <SelectItem key="agent">Agent (Worker)</SelectItem>
                             </Select>
+                            <p className="text-xs text-default-500 mt-1">
+                              k3s has two node types: Server (control-plane) and Agent (worker)
+                            </p>
                           </div>
                         </div>
 
@@ -1424,204 +2371,140 @@ export default function NodesManagementPage() {
                           />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium mb-2">
-                              Cluster Name{" "}
-                              <span className="text-danger">*</span>
-                            </label>
-                            <Input
-                              placeholder="Production Cluster"
-                              value={newNodeForm.clusterName}
-                              onChange={(e) =>
-                                updateNewNodeForm("clusterName", e.target.value)
-                              }
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium mb-2">
-                              Cluster ID
-                            </label>
-                            <Input
-                              placeholder="cluster-prod-01"
-                              value={newNodeForm.clusterId}
-                              onChange={(e) =>
-                                updateNewNodeForm("clusterId", e.target.value)
-                              }
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium mb-2">
-                              Country
-                            </label>
-                            <Input
-                              placeholder="USA"
-                              value={newNodeForm.location.country}
-                              onChange={(e) =>
-                                updateNewNodeForm(
-                                  "location.country",
-                                  e.target.value,
-                                )
-                              }
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium mb-2">
-                              City
-                            </label>
-                            <Input
-                              placeholder="San Francisco"
-                              value={newNodeForm.location.city}
-                              onChange={(e) =>
-                                updateNewNodeForm(
-                                  "location.city",
-                                  e.target.value,
-                                )
-                              }
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium mb-2">
-                            Zone (Availability Zone)
-                          </label>
-                          <Input
-                            placeholder="us-west-2a"
-                            value={newNodeForm.location.zone}
-                            onChange={(e) =>
-                              updateNewNodeForm("location.zone", e.target.value)
-                            }
-                          />
-                        </div>
-                      </div>
-                    </Tab>
-
-                    <Tab key="k3s" title="k3s Settings">
-                      <div className="space-y-4 pt-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium mb-2">
-                              k3s Version
-                            </label>
-                            <Select
-                              selectedKeys={[newNodeForm.k3sVersion]}
-                              onSelectionChange={(keys) => {
-                                updateNewNodeForm(
-                                  "k3sVersion",
-                                  Array.from(keys)[0] as string,
-                                );
-                              }}
-                            >
-                              <SelectItem key="latest">Latest</SelectItem>
-                              <SelectItem key="v1.28.6+k3s1">
-                                v1.28.6+k3s1
-                              </SelectItem>
-                              <SelectItem key="v1.27.10+k3s1">
-                                v1.27.10+k3s1
-                              </SelectItem>
-                              <SelectItem key="v1.26.13+k3s1">
-                                v1.26.13+k3s1
-                              </SelectItem>
-                            </Select>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium mb-2">
-                              Install Mode
-                            </label>
-                            <Select
-                              isDisabled={newNodeForm.role !== "worker"}
-                              selectedKeys={[newNodeForm.installMode]}
-                              onSelectionChange={(keys) => {
-                                updateNewNodeForm(
-                                  "installMode",
-                                  Array.from(keys)[0] as "server" | "agent",
-                                );
-                              }}
-                            >
-                              <SelectItem key="server">
-                                Server (Standalone)
-                              </SelectItem>
-                              <SelectItem key="agent">
-                                Agent (Join Cluster)
-                              </SelectItem>
-                            </Select>
-                            {newNodeForm.role === "worker" && (
-                              <p className="text-xs text-default-500 mt-1">
-                                Worker nodes must be agents
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
-                        {newNodeForm.installMode === "agent" && (
-                          <>
+                        {nodes.length === 0 && (
+                          <div className="grid grid-cols-2 gap-4">
                             <div>
                               <label className="block text-sm font-medium mb-2">
-                                k3s Server URL{" "}
+                                Cluster Name{" "}
                                 <span className="text-danger">*</span>
                               </label>
                               <Input
-                                placeholder="https://192.168.1.10:6443"
-                                value={newNodeForm.serverURL}
+                                placeholder="Production Cluster"
+                                value={newNodeForm.clusterName}
                                 onChange={(e) =>
-                                  updateNewNodeForm("serverURL", e.target.value)
+                                  updateNewNodeForm("clusterName", e.target.value)
                                 }
                               />
-                              <p className="text-xs text-default-500 mt-1">
-                                URL of the k3s server to join
-                              </p>
                             </div>
                             <div>
                               <label className="block text-sm font-medium mb-2">
-                                Node Token{" "}
-                                <span className="text-danger">*</span>
+                                Cluster ID
                               </label>
                               <Input
-                                placeholder="K10c98e5f6e5f..."
-                                type="password"
-                                value={newNodeForm.token}
+                                placeholder="cluster-prod-01"
+                                value={newNodeForm.clusterId}
                                 onChange={(e) =>
-                                  updateNewNodeForm("token", e.target.value)
+                                  updateNewNodeForm("clusterId", e.target.value)
                                 }
                               />
+                            </div>
+                          </div>
+                        )}
+                        {nodes.length > 0 && (
+                          <div className="p-4 bg-default-50 rounded-lg border border-default-200">
+                            <p className="text-sm text-default-600">
+                              <strong>Cluster:</strong> {nodes[0].clusterName || "N/A"}
+                              {nodes[0].clusterId && (
+                                <span className="ml-2 text-default-500">
+                                  (ID: {nodes[0].clusterId})
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-xs text-default-500 mt-1">
+                              Using cluster configuration from existing nodes
+                            </p>
+                          </div>
+                        )}
+
+                        {nodes.length === 0 && (
+                          <>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium mb-2">
+                                  Country
+                                </label>
+                                <Input
+                                  placeholder="USA"
+                                  value={newNodeForm.location.country}
+                                  onChange={(e) =>
+                                    updateNewNodeForm(
+                                      "location.country",
+                                      e.target.value,
+                                    )
+                                  }
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium mb-2">
+                                  City
+                                </label>
+                                <Input
+                                  placeholder="San Francisco"
+                                  value={newNodeForm.location.city}
+                                  onChange={(e) =>
+                                    updateNewNodeForm(
+                                      "location.city",
+                                      e.target.value,
+                                    )
+                                  }
+                                />
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium mb-2">
+                                Zone
+                              </label>
+                              <Select
+                                placeholder="Select a zone"
+                                selectedKeys={newNodeForm.location.zone ? [newNodeForm.location.zone] : []}
+                                onSelectionChange={(keys) => {
+                                  const selectedZone = Array.from(keys)[0] as string;
+                                  updateNewNodeForm("location.zone", selectedZone || "");
+                                }}
+                              >
+                                {cloudZones.flatMap((regionGroup) =>
+                                  regionGroup.zones.map((zone) => (
+                                    <SelectItem key={zone}>
+                                      {zone} ({regionGroup.region})
+                                    </SelectItem>
+                                  ))
+                                )}
+                              </Select>
                               <p className="text-xs text-default-500 mt-1">
-                                Token from k3s server (usually in
-                                /var/lib/rancher/k3s/server/node-token)
+                                Select a zone for this node
                               </p>
                             </div>
                           </>
                         )}
+                        {nodes.length > 0 && (
+                          <div className="p-4 bg-default-50 rounded-lg border border-default-200">
+                            <p className="text-sm text-default-600 mb-2">
+                              <strong>Location:</strong>
+                            </p>
+                            <div className="space-y-1 text-sm text-default-600">
+                              {nodes[0].location.country && (
+                                <p>
+                                  <strong>Country:</strong> {nodes[0].location.country}
+                                </p>
+                              )}
+                              {nodes[0].location.city && (
+                                <p>
+                                  <strong>City:</strong> {nodes[0].location.city}
+                                </p>
+                              )}
+                              {nodes[0].location.zone && (
+                                <p>
+                                  <strong>Zone:</strong> {nodes[0].location.zone}
+                                </p>
+                              )}
+                            </div>
+                            <p className="text-xs text-default-500 mt-2">
+                              Using location from existing nodes
+                            </p>
+                          </div>
+                        )}
 
-                        <div>
-                          <label className="block text-sm font-medium mb-2">
-                            Flannel Backend
-                          </label>
-                          <Select
-                            selectedKeys={[newNodeForm.flannelBackend]}
-                            onSelectionChange={(keys) => {
-                              updateNewNodeForm(
-                                "flannelBackend",
-                                Array.from(keys)[0] as
-                                  | "vxlan"
-                                  | "host-gw"
-                                  | "wireguard",
-                              );
-                            }}
-                          >
-                            <SelectItem key="vxlan">VXLAN (Default)</SelectItem>
-                            <SelectItem key="host-gw">host-gw</SelectItem>
-                            <SelectItem key="wireguard">WireGuard</SelectItem>
-                          </Select>
-                        </div>
-                      </div>
-                    </Tab>
-
-                    <Tab key="advanced" title="Labels & Taints">
-                      <div className="space-y-6 pt-4">
                         {/* Labels Section */}
                         <div>
                           <div className="flex items-center justify-between mb-4">
@@ -1748,31 +2631,120 @@ export default function NodesManagementPage() {
                           </div>
                         </div>
                       </div>
-                    </Tab>
+                    </div>
+                  )}
 
-                    <Tab key="install" title="Installation">
-                      <div className="space-y-4 pt-4">
-                        {installationStatus.status === "idle" ? (
-                          <div className="text-center py-8">
-                            <Server
-                              className="mx-auto mb-4 text-default-400"
-                              size={48}
-                            />
-                            <p className="text-default-600 mb-4">
-                              Configure your node settings in the previous tabs,
-                              then click "Install k3s" to begin automated
-                              installation.
+                  {/* Step 3/4: Review & Install */}
+                  {((newNodeForm.target === "host" && currentStep === 3) ||
+                    (newNodeForm.target === "remote" && currentStep === 4)) && (
+                    <div className="space-y-4">
+                      <div className="space-y-4">
+                        {/* Summary Text */}
+                        <Card className="subnet-card">
+                          <CardBody className="p-6">
+                            <p className="text-base leading-relaxed text-default-700">
+                              You are about to install k3s on{" "}
+                              <span className="font-semibold text-primary">
+                                {newNodeForm.target === "host" ? "the local host" : `remote server ${newNodeForm.serverIP || ""}`}
+                              </span>
+                              {" "}as a{" "}
+                              <span className="font-semibold text-primary">
+                                {newNodeForm.roles.join(" and ")}
+                              </span>
+                              {" "}node named{" "}
+                              <span className="font-semibold text-primary">
+                                {newNodeForm.name || "N/A"}
+                              </span>
+                              {newNodeForm.description && (
+                                <>
+                                  {" "}({newNodeForm.description})
+                                </>
+                              )}
+                              .{" "}
+                              {nodes.length === 0 ? (
+                                <>
+                                  This will create a new cluster{" "}
+                                  <span className="font-semibold text-primary">
+                                    {newNodeForm.clusterName || "N/A"}
+                                  </span>
+                                  {newNodeForm.clusterId && (
+                                    <>
+                                      {" "}(ID: <span className="font-semibold text-primary">{newNodeForm.clusterId}</span>)
+                                    </>
+                                  )}
+                                  {" "}located in{" "}
+                                  <span className="font-semibold text-primary">
+                                    {newNodeForm.location.city || "N/A"}
+                                    {newNodeForm.location.country && `, ${newNodeForm.location.country}`}
+                                    {newNodeForm.location.zone && ` (${newNodeForm.location.zone})`}
+                                  </span>
+                                  .
+                                </>
+                              ) : (
+                                <>
+                                  This node will join the existing cluster{" "}
+                                  <span className="font-semibold text-primary">
+                                    {nodes[0].clusterName || newNodeForm.clusterName || "N/A"}
+                                  </span>
+                                  {" "}in{" "}
+                                  <span className="font-semibold text-primary">
+                                    {nodes[0].location.city || newNodeForm.location.city || "N/A"}
+                                    {(nodes[0].location.country || newNodeForm.location.country) && `, ${nodes[0].location.country || newNodeForm.location.country}`}
+                                    {(nodes[0].location.zone || newNodeForm.location.zone) && ` (${nodes[0].location.zone || newNodeForm.location.zone})`}
+                                  </span>
+                                  .
+                                </>
+                              )}
+                              {newNodeForm.target === "remote" && (
+                                <>
+                                  {" "}The installation will be performed via SSH using{" "}
+                                  <span className="font-semibold text-primary">
+                                    {newNodeForm.sshUser || "root"}
+                                  </span>
+                                  {" "}authentication.
+                                </>
+                              )}
+                              {newNodeForm.roles.includes("agent") && (
+                                <>
+                                  {" "}The node will automatically join the cluster as an agent.
+                                </>
+                              )}
+                              {newNodeForm.labels.length > 0 && (
+                                <>
+                                  {" "}Labels:{" "}
+                                  {newNodeForm.labels.map((label, index) => (
+                                    <span key={index}>
+                                      <span className="font-semibold text-primary">
+                                        {label.key}
+                                        {label.value && `=${label.value}`}
+                                      </span>
+                                      {index < newNodeForm.labels.length - 1 && ", "}
+                                    </span>
+                                  ))}
+                                  .
+                                </>
+                              )}
+                              {newNodeForm.taints.length > 0 && (
+                                <>
+                                  {" "}Taints:{" "}
+                                  {newNodeForm.taints.map((taint, index) => (
+                                    <span key={index}>
+                                      <span className="font-semibold text-warning">
+                                        {taint.key}
+                                        {taint.value && `=${taint.value}`}: {taint.effect}
+                                      </span>
+                                      {index < newNodeForm.taints.length - 1 && ", "}
+                                    </span>
+                                  ))}
+                                  .
+                                </>
+                              )}
                             </p>
-                            <Button
-                              color="primary"
-                              size="lg"
-                              startContent={<Plus size={20} />}
-                              onPress={handleInstallK3s}
-                            >
-                              Install k3s on Server
-                            </Button>
-                          </div>
-                        ) : (
+                          </CardBody>
+                        </Card>
+
+                        {/* Installation Status */}
+                        {installationStatus.status !== "idle" && (
                           <div className="space-y-4">
                             <div className="flex items-center gap-3">
                               <Activity
@@ -1866,15 +2838,33 @@ export default function NodesManagementPage() {
                           </div>
                         )}
                       </div>
-                    </Tab>
-                  </Tabs>
+                    </div>
+                  )}
                 </div>
               </ModalBody>
               <ModalFooter>
                 <Button variant="light" onPress={onClose}>
                   Cancel
                 </Button>
-                {installationStatus.status === "idle" && (
+                {currentStep > 1 && (
+                  <Button
+                    variant="flat"
+                    startContent={<ChevronLeft size={16} />}
+                    onPress={prevStep}
+                  >
+                    Previous
+                  </Button>
+                )}
+                {currentStep < totalSteps && installationStatus.status === "idle" && (
+                  <Button
+                    color="primary"
+                    endContent={<ChevronRight size={16} />}
+                    onPress={nextStep}
+                  >
+                    Next
+                  </Button>
+                )}
+                {currentStep === totalSteps && installationStatus.status === "idle" && (
                   <Button
                     color="primary"
                     startContent={<Server size={16} />}
@@ -1935,23 +2925,24 @@ export default function NodesManagementPage() {
                             </div>
                             <div>
                               <label className="block text-sm font-medium mb-2">
-                                Node Role <span className="text-danger">*</span>
+                                Node Roles <span className="text-danger">*</span>
                               </label>
                               <Select
-                                selectedKeys={[editNodeForm.role]}
+                                selectionMode="multiple"
+                                selectedKeys={new Set(editNodeForm.roles)}
                                 onSelectionChange={(keys) => {
-                                  updateEditNodeForm(
-                                    "role",
-                                    Array.from(keys)[0] as Node["role"],
-                                  );
+                                  const selectedRoles = Array.from(keys) as Array<
+                                    "server" | "agent"
+                                  >;
+                                  updateEditNodeForm("roles", selectedRoles);
                                 }}
                               >
-                                <SelectItem key="worker">Worker</SelectItem>
-                                <SelectItem key="master">Master</SelectItem>
-                                <SelectItem key="control-plane">
-                                  Control Plane
-                                </SelectItem>
+                                <SelectItem key="server">Server (Control Plane)</SelectItem>
+                                <SelectItem key="agent">Agent (Worker)</SelectItem>
                               </Select>
+                              <p className="text-xs text-default-500 mt-1">
+                                k3s has two node types: Server (control-plane) and Agent (worker)
+                              </p>
                             </div>
                           </div>
 
