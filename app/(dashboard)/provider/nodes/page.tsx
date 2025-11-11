@@ -229,9 +229,14 @@ export default function NodesManagementPage() {
   const parseKubernetesResource = (value: string | undefined): number => {
     if (!value) return 0;
     
-    // Parse CPU (cores)
+    // Parse CPU (cores) - if it's just a number without units
     if (!value.includes("m") && !value.includes("Ki") && !value.includes("Mi") && !value.includes("Gi") && !value.includes("Ti")) {
-      return parseFloat(value) || 0;
+      const num = parseFloat(value);
+      // If it's a very large number without units, assume it's bytes and convert to GB
+      if (num > 1000000) {
+        return Math.round((num / (1024 * 1024 * 1024)) * 100) / 100; // bytes to GB
+      }
+      return num || 0;
     }
     
     // Parse memory/storage (Ki, Mi, Gi, Ti)
@@ -333,6 +338,8 @@ export default function NodesManagementPage() {
           osImage: apiNode.os_image,
           kernelVersion: apiNode.kernel_version,
           kubeletVersion: apiNode.version,
+          internalIp: apiNode.internal_ip,
+          externalIp: apiNode.external_ip,
           labels: apiNode.labels,
           taints: apiNode.annotations ? Object.entries(apiNode.annotations)
             .filter(([key]) => key.startsWith("taint."))
@@ -351,19 +358,19 @@ export default function NodesManagementPage() {
             bandwidth: 0, // Not available from API
             pods: 110, // Default pod capacity
           },
-          usage: existingNode?.usage || {
-            cpu: 0,
-            memory: 0,
-            storage: 0,
-            pods: 0,
+          usage: {
+            cpu: apiNode.cpu_usage_percent !== undefined ? apiNode.cpu_usage_percent : (existingNode?.usage?.cpu || 0),
+            memory: apiNode.memory_usage_percent !== undefined ? apiNode.memory_usage_percent : (existingNode?.usage?.memory || 0),
+            storage: apiNode.storage_usage_percent !== undefined ? apiNode.storage_usage_percent : (existingNode?.usage?.storage || 0),
+            pods: apiNode.total_pods !== undefined ? apiNode.total_pods : (existingNode?.usage?.pods || 0),
           },
-          pods: existingNode?.pods || {
-            running: 0,
-            pending: 0,
-            failed: 0,
-            succeeded: 0,
-            total: 0,
-            capacity: 110,
+          pods: {
+            running: apiNode.running_pods !== undefined ? apiNode.running_pods : (existingNode?.pods?.running || 0),
+            pending: apiNode.pending_pods !== undefined ? apiNode.pending_pods : (existingNode?.pods?.pending || 0),
+            failed: apiNode.failed_pods !== undefined ? apiNode.failed_pods : (existingNode?.pods?.failed || 0),
+            succeeded: apiNode.succeeded_pods !== undefined ? apiNode.succeeded_pods : (existingNode?.pods?.succeeded || 0),
+            total: apiNode.total_pods !== undefined ? apiNode.total_pods : (existingNode?.pods?.total || 0),
+            capacity: existingNode?.pods?.capacity || 110,
           },
           location: existingNode?.location || {
             country: "",

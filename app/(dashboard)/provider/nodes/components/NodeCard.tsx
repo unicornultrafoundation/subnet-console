@@ -17,6 +17,7 @@ import {
   AlertCircle,
   Box,
   HardDrive,
+  Network,
 } from "lucide-react";
 import { Node } from "@/types";
 
@@ -106,6 +107,15 @@ export function NodeCard({
 
               {/* Compact Info Row */}
               <div className="flex items-center gap-3 text-xs text-default-600 flex-wrap">
+                {node.internalIp && (
+                  <div className="flex items-center gap-1">
+                    <Network size={12} />
+                    <span className="truncate font-mono">
+                      {node.internalIp}
+                      {node.externalIp && ` / ${node.externalIp}`}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center gap-1">
                   <MapPin size={12} />
                   <span className="truncate">
@@ -125,11 +135,11 @@ export function NodeCard({
                   <>
                     <div className="flex items-center gap-1">
                       <Activity size={12} />
-                      <span>CPU {node.usage.cpu}%</span>
+                      <span>CPU {node.usage.cpu.toFixed(1)}%</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <HardDrive size={12} />
-                      <span>Mem {node.usage.memory}%</span>
+                      <span>Mem {node.usage.memory.toFixed(1)}%</span>
                     </div>
                   </>
                 )}

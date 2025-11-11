@@ -96,6 +96,22 @@ export function NodeDetailsModal({
                               {selectedNode.nodeName || selectedNode.name}
                             </p>
                           </div>
+                          {selectedNode.internalIp && (
+                            <div>
+                              <h4 className="font-semibold mb-2">Internal IP</h4>
+                              <p className="text-default-600 font-mono text-sm">
+                                {selectedNode.internalIp}
+                              </p>
+                            </div>
+                          )}
+                          {selectedNode.externalIp && (
+                            <div>
+                              <h4 className="font-semibold mb-2">External IP</h4>
+                              <p className="text-default-600 font-mono text-sm">
+                                {selectedNode.externalIp}
+                              </p>
+                            </div>
+                          )}
                           <div>
                             <h4 className="font-semibold mb-2">Role</h4>
                             <Chip color="secondary" size="sm" variant="flat">
@@ -349,7 +365,7 @@ export function NodeDetailsModal({
                                   value={selectedNode.usage.cpu}
                                 />
                                 <span className="text-sm font-semibold">
-                                  {selectedNode.usage.cpu}%
+                                  {selectedNode.usage.cpu.toFixed(2)}%
                                 </span>
                               </div>
                             </div>
@@ -364,7 +380,7 @@ export function NodeDetailsModal({
                                   value={selectedNode.usage.memory}
                                 />
                                 <span className="text-sm font-semibold">
-                                  {selectedNode.usage.memory}%
+                                  {selectedNode.usage.memory.toFixed(2)}%
                                 </span>
                               </div>
                             </div>

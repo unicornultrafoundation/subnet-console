@@ -55,6 +55,8 @@ export interface Node {
   osImage?: string;
   kernelVersion?: string;
   kubeletVersion?: string;
+  internalIp?: string;
+  externalIp?: string;
   // Pod information
   pods?: {
     running: number;

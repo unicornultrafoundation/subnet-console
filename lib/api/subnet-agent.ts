@@ -53,6 +53,17 @@ export interface K3sNode {
   allocatable_cpu?: string;
   allocatable_memory?: string;
   allocatable_storage?: string;
+  cpu_usage?: string;
+  memory_usage?: string;
+  storage_usage?: string;
+  cpu_usage_percent?: number;
+  memory_usage_percent?: number;
+  storage_usage_percent?: number;
+  total_pods?: number;
+  running_pods?: number;
+  pending_pods?: number;
+  failed_pods?: number;
+  succeeded_pods?: number;
 }
 
 export interface GetNodesResponse {
