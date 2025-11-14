@@ -2,44 +2,30 @@
 export const blockchainConfig = {
   // Supported networks
   networks: {
-    ethereum: {
-      chainId: 1,
-      name: "Ethereum Mainnet",
+    u2u: {
+      chainId: 39,
+      name: "U2U Solaris Mainnet",
       rpcUrl:
-        process.env.NEXT_PUBLIC_ETHEREUM_RPC_URL || "https://eth.llamarpc.com",
-      explorerUrl: "https://etherscan.io",
+        process.env.NEXT_PUBLIC_U2U_RPC_URL || "https://rpc-mainnet.u2u.xyz",
+      explorerUrl: "https://u2uscan.xyz",
       nativeCurrency: {
-        name: "Ether",
-        symbol: "ETH",
+        name: "U2U",
+        symbol: "U2U",
         decimals: 18,
       },
     },
-    polygon: {
-      chainId: 137,
-      name: "Polygon",
+    nebulas: {
+      chainId: 2484,
+      name: "U2U Nebulas Testnet",
       rpcUrl:
-        process.env.NEXT_PUBLIC_POLYGON_RPC_URL ||
-        "https://polygon.llamarpc.com",
-      explorerUrl: "https://polygonscan.com",
+        process.env.NEXT_PUBLIC_U2U_RPC_URL || "https://rpc-nebulas-testnet.uniultra.xyz",
+      explorerUrl: "https://testnet.u2uscan.xyz",
       nativeCurrency: {
-        name: "MATIC",
-        symbol: "MATIC",
+        name: "U2U",
+        symbol: "U2U",
         decimals: 18,
       },
-    },
-    arbitrum: {
-      chainId: 42161,
-      name: "Arbitrum One",
-      rpcUrl:
-        process.env.NEXT_PUBLIC_ARBITRUM_RPC_URL ||
-        "https://arb1.arbitrum.io/rpc",
-      explorerUrl: "https://arbiscan.io",
-      nativeCurrency: {
-        name: "Ether",
-        symbol: "ETH",
-        decimals: 18,
-      },
-    },
+    }
   },
 
   // Contract addresses
@@ -50,10 +36,12 @@ export const blockchainConfig = {
       process.env.NEXT_PUBLIC_VERIFICATION_CONTRACT_ADDRESS || "",
     marketplaceContract:
       process.env.NEXT_PUBLIC_MARKETPLACE_CONTRACT_ADDRESS || "",
+    providerContract:
+      process.env.NEXT_PUBLIC_PROVIDER_CONTRACT_ADDRESS || "0x4dC85E2E0C15c2508c1ddc23b193c3bACc687658",
   },
 
   // Default network
-  defaultNetwork: "ethereum",
+  defaultNetwork: "u2u",
 
   // Wallet connection settings
   walletConnect: {
