@@ -37,7 +37,7 @@ export const blockchainConfig = {
     marketplaceContract:
       process.env.NEXT_PUBLIC_MARKETPLACE_CONTRACT_ADDRESS || "",
     providerContract:
-      process.env.NEXT_PUBLIC_PROVIDER_CONTRACT_ADDRESS || "0x4dC85E2E0C15c2508c1ddc23b193c3bACc687658",
+      process.env.NEXT_PUBLIC_PROVIDER_CONTRACT_ADDRESS || "0xd07f43C636F7842A69FF22E36e3c0E1811040c2d",
     stakeToken:
       process.env.NEXT_PUBLIC_STAKE_TOKEN_ADDRESS || "0x9b1F378683CA345aB210b4cB48Dbf6fa2c072f9F",
   },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
 import {
@@ -11,19 +11,35 @@ import {
   AlertTriangle,
   CheckCircle,
   Upload,
+  AlertCircle,
 } from "lucide-react";
 
 import { ProviderConfig } from "./types";
-
 import { useNodeStore } from "@/store/node-store";
+import { useWallet } from "@/hooks/use-wallet";
+import {
+  updateProviderSpecs,
+  type UpdateProviderSpecsParams,
+  type ProviderInfo,
+} from "@/lib/blockchain/provider-contract";
 
 interface ResourcesTabProps {
   config: ProviderConfig;
   updateConfig: (path: string, value: any) => void;
+  providerInfo: ProviderInfo | null;
+  providerAddress: string | null;
+  onResourceUpdate?: () => void;
 }
 
-export function ResourcesTab({ config, updateConfig }: ResourcesTabProps) {
+export function ResourcesTab({
+  config,
+  updateConfig,
+  providerInfo,
+  providerAddress,
+  onResourceUpdate,
+}: ResourcesTabProps) {
   const { nodes } = useNodeStore();
+  const { address, isConnected } = useWallet();
   const [calculatedResources, setCalculatedResources] = useState({
     cpu: 0,
     memory: 0,
@@ -31,6 +47,8 @@ export function ResourcesTab({ config, updateConfig }: ResourcesTabProps) {
     bandwidth: 0,
   });
   const [isUpdating, setIsUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [updateSuccess, setUpdateSuccess] = useState(false);
 
   // Calculate total resources from active nodes (80% available, 20% reserved)
   useEffect(() => {
@@ -55,30 +73,96 @@ export function ResourcesTab({ config, updateConfig }: ResourcesTabProps) {
     });
   }, [nodes]);
 
+  // Get blockchain resources from providerInfo
+  const blockchainResources = useMemo(() => {
+    if (!providerInfo) return null;
+    return {
+      cpu: Number(providerInfo.cpuCores) / 1000, // Convert mCPU to cores
+      memory: Number(providerInfo.memoryMB),
+      storage: Number(providerInfo.diskGB),
+      bandwidth: 0, // Not available in contract
+    };
+  }, [providerInfo]);
+
   // Check if resources match blockchain
-  const hasMismatch =
-    config.blockchainResources &&
-    (calculatedResources.cpu !== config.blockchainResources.cpu ||
-      calculatedResources.memory !== config.blockchainResources.memory ||
-      calculatedResources.storage !== config.blockchainResources.storage ||
-      calculatedResources.bandwidth !== config.blockchainResources.bandwidth);
+  const hasMismatch = useMemo(() => {
+    if (!blockchainResources) return false;
+    return (
+      calculatedResources.cpu !== blockchainResources.cpu ||
+      calculatedResources.memory !== blockchainResources.memory ||
+      calculatedResources.storage !== blockchainResources.storage
+    );
+  }, [calculatedResources, blockchainResources]);
+
+  // Check if blockchain resources are smaller than node resources (can update)
+  const canUpdate = useMemo(() => {
+    if (!blockchainResources) return false;
+    return (
+      calculatedResources.cpu > blockchainResources.cpu ||
+      calculatedResources.memory > blockchainResources.memory ||
+      calculatedResources.storage > blockchainResources.storage
+    );
+  }, [calculatedResources, blockchainResources]);
+
+  // Check if node resources are smaller than blockchain (warning only)
+  const hasWarning = useMemo(() => {
+    if (!blockchainResources) return false;
+    return (
+      calculatedResources.cpu < blockchainResources.cpu ||
+      calculatedResources.memory < blockchainResources.memory ||
+      calculatedResources.storage < blockchainResources.storage
+    );
+  }, [calculatedResources, blockchainResources]);
 
   // Update resources to blockchain
   const handleUpdateToBlockchain = async () => {
+    if (!providerAddress || !isConnected || !address || !providerInfo) {
+      setUpdateError("Provider address or wallet connection is missing");
+      return;
+    }
+
+    if (!canUpdate) {
+      setUpdateError("Cannot update: Node resources are not greater than blockchain resources");
+      return;
+    }
+
     setIsUpdating(true);
+    setUpdateError(null);
+    setUpdateSuccess(false);
+
     try {
-      // Simulate blockchain update
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Convert CPU cores to mCPU (multiply by 1000)
+      const cpuCoresMcpu = Math.floor(calculatedResources.cpu * 1000);
 
-      updateConfig("blockchainResources", {
-        ...calculatedResources,
-        lastUpdated: new Date().toISOString(),
-      });
+      const params: UpdateProviderSpecsParams = {
+        providerId: providerAddress,
+        machineType: Number(providerInfo.machineType),
+        region: Number(providerInfo.region),
+        cpuCores: cpuCoresMcpu,
+        gpuCores: Number(providerInfo.gpuCores) || 0,
+        memoryMB: calculatedResources.memory,
+        diskGB: calculatedResources.storage,
+      };
 
-      alert("Resources updated to blockchain successfully!");
-    } catch (error) {
-      alert("Failed to update resources to blockchain. Please try again.");
-      console.error("Blockchain update error:", error);
+      console.log("=== Update Provider Specs ===");
+      console.log("Params:", params);
+
+      const hash = await updateProviderSpecs(params);
+      console.log("=== Update Provider Specs - Success ===");
+      console.log("Transaction hash:", hash);
+
+      setUpdateSuccess(true);
+
+      // Refresh provider info after update
+      if (onResourceUpdate) {
+        setTimeout(() => {
+          onResourceUpdate();
+        }, 2000); // Wait 2 seconds for blockchain to update
+      }
+    } catch (err: any) {
+      console.error("=== Update Provider Specs - Error ===");
+      console.error("Error updating provider specs:", err);
+      setUpdateError(err.message || "Failed to update resources. Please try again.");
     } finally {
       setIsUpdating(false);
     }
@@ -92,19 +176,25 @@ export function ResourcesTab({ config, updateConfig }: ResourcesTabProps) {
             <Box size={20} />
             <h2 className="text-xl font-bold">Resources</h2>
           </div>
-          {config.blockchainResources && (
+          {blockchainResources && (
             <div className="flex items-center gap-2">
-              {hasMismatch ? (
+              {canUpdate ? (
                 <Button
-                  color="warning"
+                  color="primary"
                   isLoading={isUpdating}
                   size="sm"
                   startContent={<Upload size={16} />}
                   variant="flat"
                   onPress={handleUpdateToBlockchain}
+                  isDisabled={!isConnected || !address}
                 >
                   Update to Blockchain
                 </Button>
+              ) : hasMismatch ? (
+                <div className="flex items-center gap-1 text-warning text-sm">
+                  <AlertCircle size={16} />
+                  <span>Mismatch</span>
+                </div>
               ) : (
                 <div className="flex items-center gap-1 text-success text-sm">
                   <CheckCircle size={16} />
@@ -116,29 +206,57 @@ export function ResourcesTab({ config, updateConfig }: ResourcesTabProps) {
         </div>
       </CardHeader>
       <CardBody className="space-y-4">
+        {/* Error Message */}
+        {updateError && (
+          <div className="p-3 bg-danger/10 rounded-lg border border-danger/20 flex items-center gap-2">
+            <AlertCircle className="text-danger" size={18} />
+            <span className="text-sm text-danger">{updateError}</span>
+          </div>
+        )}
+
+        {/* Success Message */}
+        {updateSuccess && (
+          <div className="p-3 bg-success/10 rounded-lg border border-success/20 flex items-center gap-2">
+            <CheckCircle className="text-success" size={18} />
+            <span className="text-sm text-success">
+              Resources updated successfully! Refreshing provider info...
+            </span>
+          </div>
+        )}
+
         {/* Status Banner */}
-        {hasMismatch && (
-          <div className="p-3 bg-warning-50 rounded-lg border border-warning-200 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="text-warning" size={18} />
-              <span className="text-sm text-warning-700 font-medium">
-                Resources mismatch with blockchain
-              </span>
+        {hasWarning && (
+          <div className="p-3 bg-warning/10 rounded-lg border border-warning/20">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="text-warning flex-shrink-0 mt-0.5" size={18} />
+              <div>
+                <p className="text-sm text-warning font-medium mb-1">
+                  Warning: Node resources are smaller than blockchain resources
+                </p>
+                <p className="text-xs text-default-600">
+                  Your node resources are less than what is registered on the blockchain.
+                  You cannot update resources in this case. Consider adding more nodes or reducing blockchain resources.
+                </p>
+              </div>
             </div>
           </div>
         )}
 
-        {!hasMismatch && config.blockchainResources && (
-          <div className="p-3 bg-success-50 rounded-lg border border-success-200 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="text-success" size={18} />
-              <span className="text-sm text-success-700">
-                Last synced:{" "}
-                {new Date(
-                  config.blockchainResources.lastUpdated,
-                ).toLocaleDateString()}
-              </span>
-            </div>
+        {canUpdate && !hasWarning && (
+          <div className="p-3 bg-info/10 rounded-lg border border-info/20 flex items-center gap-2">
+            <AlertCircle className="text-info" size={18} />
+            <span className="text-sm text-info font-medium">
+              Node resources are greater than blockchain. You can update to blockchain.
+            </span>
+          </div>
+        )}
+
+        {!hasMismatch && blockchainResources && (
+          <div className="p-3 bg-success/10 rounded-lg border border-success/20 flex items-center gap-2">
+            <CheckCircle className="text-success" size={18} />
+            <span className="text-sm text-success">
+              Resources are synced with blockchain
+            </span>
           </div>
         )}
 
@@ -153,15 +271,23 @@ export function ResourcesTab({ config, updateConfig }: ResourcesTabProps) {
             <div className="text-2xl font-bold text-primary mb-1">
               {calculatedResources.cpu.toLocaleString()}
             </div>
-            {config.blockchainResources && (
+            {blockchainResources && (
               <div
                 className={`text-xs ${
-                  calculatedResources.cpu !== config.blockchainResources.cpu
-                    ? "text-warning"
+                  calculatedResources.cpu !== blockchainResources.cpu
+                    ? calculatedResources.cpu > blockchainResources.cpu
+                      ? "text-info"
+                      : "text-warning"
                     : "text-default-500"
                 }`}
               >
-                Blockchain: {config.blockchainResources.cpu}
+                Blockchain: {blockchainResources.cpu}
+                {calculatedResources.cpu > blockchainResources.cpu && (
+                  <span className="ml-1">(can update)</span>
+                )}
+                {calculatedResources.cpu < blockchainResources.cpu && (
+                  <span className="ml-1">(warning)</span>
+                )}
               </div>
             )}
             <div className="text-xs text-default-400 mt-2">
@@ -179,16 +305,23 @@ export function ResourcesTab({ config, updateConfig }: ResourcesTabProps) {
               {calculatedResources.memory.toLocaleString()}{" "}
               <span className="text-sm font-normal">GB</span>
             </div>
-            {config.blockchainResources && (
+            {blockchainResources && (
               <div
                 className={`text-xs ${
-                  calculatedResources.memory !==
-                  config.blockchainResources.memory
-                    ? "text-warning"
+                  calculatedResources.memory !== blockchainResources.memory
+                    ? calculatedResources.memory > blockchainResources.memory
+                      ? "text-info"
+                      : "text-warning"
                     : "text-default-500"
                 }`}
               >
-                Blockchain: {config.blockchainResources.memory} GB
+                Blockchain: {blockchainResources.memory} GB
+                {calculatedResources.memory > blockchainResources.memory && (
+                  <span className="ml-1">(can update)</span>
+                )}
+                {calculatedResources.memory < blockchainResources.memory && (
+                  <span className="ml-1">(warning)</span>
+                )}
               </div>
             )}
             <div className="text-xs text-default-400 mt-2">
@@ -206,16 +339,23 @@ export function ResourcesTab({ config, updateConfig }: ResourcesTabProps) {
               {calculatedResources.storage.toLocaleString()}{" "}
               <span className="text-sm font-normal">GB</span>
             </div>
-            {config.blockchainResources && (
+            {blockchainResources && (
               <div
                 className={`text-xs ${
-                  calculatedResources.storage !==
-                  config.blockchainResources.storage
-                    ? "text-warning"
+                  calculatedResources.storage !== blockchainResources.storage
+                    ? calculatedResources.storage > blockchainResources.storage
+                      ? "text-info"
+                      : "text-warning"
                     : "text-default-500"
                 }`}
               >
-                Blockchain: {config.blockchainResources.storage} GB
+                Blockchain: {blockchainResources.storage} GB
+                {calculatedResources.storage > blockchainResources.storage && (
+                  <span className="ml-1">(can update)</span>
+                )}
+                {calculatedResources.storage < blockchainResources.storage && (
+                  <span className="ml-1">(warning)</span>
+                )}
               </div>
             )}
             <div className="text-xs text-default-400 mt-2">
@@ -233,16 +373,9 @@ export function ResourcesTab({ config, updateConfig }: ResourcesTabProps) {
               {calculatedResources.bandwidth.toLocaleString()}{" "}
               <span className="text-sm font-normal">Mbps</span>
             </div>
-            {config.blockchainResources && (
-              <div
-                className={`text-xs ${
-                  calculatedResources.bandwidth !==
-                  config.blockchainResources.bandwidth
-                    ? "text-warning"
-                    : "text-default-500"
-                }`}
-              >
-                Blockchain: {config.blockchainResources.bandwidth} Mbps
+            {blockchainResources && (
+              <div className="text-xs text-default-500">
+                Blockchain: N/A (not tracked)
               </div>
             )}
             <div className="text-xs text-default-400 mt-2">

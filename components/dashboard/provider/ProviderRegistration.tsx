@@ -80,7 +80,8 @@ interface ProviderMetadata {
   description: string;
   website?: string;
   email?: string;
-  location?: string;
+  location?: string; // city
+  country?: string;
   [key: string]: string | undefined;
 }
 
@@ -105,6 +106,7 @@ export default function ProviderRegistration() {
     website: "",
     email: "",
     location: "",
+    country: "",
   });
 
   // CPU cores display value (decimal 3, e.g., 0.1, 1, 2.5 cores)
@@ -217,6 +219,7 @@ export default function ProviderRegistration() {
     if (metadataFields.website) metadataObj.website = metadataFields.website;
     if (metadataFields.email) metadataObj.email = metadataFields.email;
     if (metadataFields.location) metadataObj.location = metadataFields.location;
+    if (metadataFields.country) metadataObj.country = metadataFields.country;
 
     const metadataJson = Object.keys(metadataObj).length > 0 
       ? JSON.stringify(metadataObj, null, 2)
@@ -660,15 +663,26 @@ export default function ProviderRegistration() {
                   />
                 </div>
 
-                <Input
-                  label="Location"
-                  placeholder="e.g., Singapore, Asia"
-                  value={metadataFields.location || ""}
-                  onChange={(e) =>
-                    setMetadataFields((prev) => ({ ...prev, location: e.target.value }))
-                  }
-                  description="Physical location of your provider (optional)"
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Country"
+                    placeholder="e.g., Singapore"
+                    value={metadataFields.country || ""}
+                    onChange={(e) =>
+                      setMetadataFields((prev) => ({ ...prev, country: e.target.value }))
+                    }
+                    description="Country of your provider (optional)"
+                  />
+                  <Input
+                    label="City"
+                    placeholder="e.g., Singapore"
+                    value={metadataFields.location || ""}
+                    onChange={(e) =>
+                      setMetadataFields((prev) => ({ ...prev, location: e.target.value }))
+                    }
+                    description="City of your provider (optional)"
+                  />
+                </div>
 
                 {formData.metadata && (
                   <Card className="bg-default-50 border-default-200">
@@ -735,13 +749,31 @@ export default function ProviderRegistration() {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   label="CPU Cores"
                   placeholder="e.g., 0.1, 1, 2.5"
                   value={cpuCoresDisplay}
-                  onChange={(e) => setCpuCoresDisplay(e.target.value)}
-                  min="0.001"
-                  step="0.001"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow empty string, numbers, and decimal point
+                    if (value === "" || /^\d*\.?\d*$/.test(value)) {
+                      setCpuCoresDisplay(value);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const value = e.target.value.trim();
+                    if (value === "") {
+                      setCpuCoresDisplay("0");
+                      return;
+                    }
+                    const numValue = parseFloat(value);
+                    if (isNaN(numValue) || numValue < 0) {
+                      setCpuCoresDisplay("0");
+                    } else {
+                      setCpuCoresDisplay(numValue.toString());
+                    }
+                  }}
                   description="Number of CPU cores (decimal 3, e.g., 0.1 = 100 mCPU, 1 = 1000 mCPU)"
                 />
 
@@ -807,66 +839,166 @@ export default function ProviderRegistration() {
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   label="CPU Core Price per Hour"
                   placeholder="e.g., 0.1"
                   value={pricingPerHour.cpuPricePerHour}
-                  onChange={(e) =>
-                    setPricingPerHour((prev) => ({
-                      ...prev,
-                      cpuPricePerHour: e.target.value,
-                    }))
-                  }
-                  min="0"
-                  step="0.01"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow empty string, numbers, and decimal point
+                    if (value === "" || /^\d*\.?\d*$/.test(value)) {
+                      setPricingPerHour((prev) => ({
+                        ...prev,
+                        cpuPricePerHour: value,
+                      }));
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const value = e.target.value.trim();
+                    if (value === "") {
+                      setPricingPerHour((prev) => ({
+                        ...prev,
+                        cpuPricePerHour: "0",
+                      }));
+                      return;
+                    }
+                    const numValue = parseFloat(value);
+                    if (isNaN(numValue) || numValue < 0) {
+                      setPricingPerHour((prev) => ({
+                        ...prev,
+                        cpuPricePerHour: "0",
+                      }));
+                    } else {
+                      setPricingPerHour((prev) => ({
+                        ...prev,
+                        cpuPricePerHour: numValue.toString(),
+                      }));
+                    }
+                  }}
                   description="Price per CPU core per hour (decimal 3, e.g., 0.1 core = 100 mCPU)"
                 />
 
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   label="GPU Price per Hour"
                   placeholder="e.g., 1.0"
                   value={pricingPerHour.gpuPricePerHour}
-                  onChange={(e) =>
-                    setPricingPerHour((prev) => ({
-                      ...prev,
-                      gpuPricePerHour: e.target.value,
-                    }))
-                  }
-                  min="0"
-                  step="0.01"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow empty string, numbers, and decimal point
+                    if (value === "" || /^\d*\.?\d*$/.test(value)) {
+                      setPricingPerHour((prev) => ({
+                        ...prev,
+                        gpuPricePerHour: value,
+                      }));
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const value = e.target.value.trim();
+                    if (value === "") {
+                      setPricingPerHour((prev) => ({
+                        ...prev,
+                        gpuPricePerHour: "0",
+                      }));
+                      return;
+                    }
+                    const numValue = parseFloat(value);
+                    if (isNaN(numValue) || numValue < 0) {
+                      setPricingPerHour((prev) => ({
+                        ...prev,
+                        gpuPricePerHour: "0",
+                      }));
+                    } else {
+                      setPricingPerHour((prev) => ({
+                        ...prev,
+                        gpuPricePerHour: numValue.toString(),
+                      }));
+                    }
+                  }}
                   description="Price per GPU core per hour"
                 />
 
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   label="Memory Price per Hour (per GB)"
                   placeholder="e.g., 0.01"
                   value={pricingPerHour.memoryPricePerHour}
-                  onChange={(e) =>
-                    setPricingPerHour((prev) => ({
-                      ...prev,
-                      memoryPricePerHour: e.target.value,
-                    }))
-                  }
-                  min="0"
-                  step="0.001"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow empty string, numbers, and decimal point
+                    if (value === "" || /^\d*\.?\d*$/.test(value)) {
+                      setPricingPerHour((prev) => ({
+                        ...prev,
+                        memoryPricePerHour: value,
+                      }));
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const value = e.target.value.trim();
+                    if (value === "") {
+                      setPricingPerHour((prev) => ({
+                        ...prev,
+                        memoryPricePerHour: "0",
+                      }));
+                      return;
+                    }
+                    const numValue = parseFloat(value);
+                    if (isNaN(numValue) || numValue < 0) {
+                      setPricingPerHour((prev) => ({
+                        ...prev,
+                        memoryPricePerHour: "0",
+                      }));
+                    } else {
+                      setPricingPerHour((prev) => ({
+                        ...prev,
+                        memoryPricePerHour: numValue.toString(),
+                      }));
+                    }
+                  }}
                   description="Price per GB of memory per hour"
                 />
 
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   label="Disk Price per Hour (per GB)"
                   placeholder="e.g., 0.001"
                   value={pricingPerHour.diskPricePerHour}
-                  onChange={(e) =>
-                    setPricingPerHour((prev) => ({
-                      ...prev,
-                      diskPricePerHour: e.target.value,
-                    }))
-                  }
-                  min="0"
-                  step="0.001"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow empty string, numbers, and decimal point
+                    if (value === "" || /^\d*\.?\d*$/.test(value)) {
+                      setPricingPerHour((prev) => ({
+                        ...prev,
+                        diskPricePerHour: value,
+                      }));
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const value = e.target.value.trim();
+                    if (value === "") {
+                      setPricingPerHour((prev) => ({
+                        ...prev,
+                        diskPricePerHour: "0",
+                      }));
+                      return;
+                    }
+                    const numValue = parseFloat(value);
+                    if (isNaN(numValue) || numValue < 0) {
+                      setPricingPerHour((prev) => ({
+                        ...prev,
+                        diskPricePerHour: "0",
+                      }));
+                    } else {
+                      setPricingPerHour((prev) => ({
+                        ...prev,
+                        diskPricePerHour: numValue.toString(),
+                      }));
+                    }
+                  }}
                   description="Price per GB of disk per hour"
                 />
               </div>
@@ -973,7 +1105,7 @@ export default function ProviderRegistration() {
                         <p className="text-dark-on-white">{metadataFields.description}</p>
                       </div>
                     )}
-                    {(metadataFields.website || metadataFields.email || metadataFields.location) && (
+                    {(metadataFields.website || metadataFields.email || metadataFields.location || metadataFields.country) && (
                       <div>
                         <span className="text-sm font-semibold text-dark-on-white-muted">
                           Contact Information:
@@ -981,7 +1113,8 @@ export default function ProviderRegistration() {
                         <div className="text-dark-on-white space-y-1">
                           {metadataFields.website && <p>Website: {metadataFields.website}</p>}
                           {metadataFields.email && <p>Email: {metadataFields.email}</p>}
-                          {metadataFields.location && <p>Location: {metadataFields.location}</p>}
+                          {metadataFields.country && <p>Country: {metadataFields.country}</p>}
+                          {metadataFields.location && <p>City: {metadataFields.location}</p>}
                         </div>
                       </div>
                     )}

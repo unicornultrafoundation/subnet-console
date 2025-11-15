@@ -1,10 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
 import { Tabs, Tab } from "@heroui/tabs";
-import { Settings, Save, ArrowLeft } from "lucide-react";
+import { Settings, Save, ArrowLeft, RefreshCw, AlertCircle } from "lucide-react";
+import { Card, CardBody } from "@heroui/card";
+import { useWallet } from "@/hooks/use-wallet";
+import {
+  getProviderInfo,
+  isProviderRegistered,
+  type ProviderInfo,
+} from "@/lib/blockchain/provider-contract";
 
 import { ProviderConfig } from "@/components/dashboard/provider/settings/types";
 import { GeneralTab } from "@/components/dashboard/provider/settings/GeneralTab";
@@ -12,9 +19,37 @@ import { NetworkTab } from "@/components/dashboard/provider/settings/NetworkTab"
 import { GpuTab } from "@/components/dashboard/provider/settings/GpuTab";
 import { PricingTab } from "@/components/dashboard/provider/settings/PricingTab";
 import { ResourcesTab } from "@/components/dashboard/provider/settings/ResourcesTab";
+import { OperatorTab } from "@/components/dashboard/provider/settings/OperatorTab";
+import { BlockchainProviderInfo } from "@/components/dashboard/provider/settings/BlockchainProviderInfo";
+
+interface ProviderMetadata {
+  name?: string;
+  description?: string;
+  website?: string;
+  email?: string;
+  location?: string; // city
+  country?: string;
+  specialties?: string[] | string;
+  [key: string]: string | string[] | undefined;
+}
+
+const regions = [
+  { value: 0, label: "North America" },
+  { value: 1, label: "Europe" },
+  { value: 2, label: "Asia Pacific" },
+  { value: 3, label: "South America" },
+  { value: 4, label: "Africa" },
+];
+
 
 export default function ProviderSettingsPage() {
   const router = useRouter();
+  const { address, isConnected } = useWallet();
+  const [isLoadingProviderInfo, setIsLoadingProviderInfo] = useState(true);
+  const [providerInfo, setProviderInfo] = useState<ProviderInfo | null>(null);
+  const [metadata, setMetadata] = useState<ProviderMetadata>({});
+  const [error, setError] = useState<string | null>(null);
+  
   const [config, setConfig] = useState<ProviderConfig>({
     name: "Quantum Computing Solutions",
     description:
@@ -71,7 +106,101 @@ export default function ProviderSettingsPage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
+
+  // Fetch provider info from contract
+  useEffect(() => {
+    const fetchProviderInfo = async () => {
+      if (!isConnected || !address) {
+        setIsLoadingProviderInfo(false);
+        return;
+      }
+
+      setIsLoadingProviderInfo(true);
+      setError(null);
+
+      try {
+        const registered = await isProviderRegistered(address);
+        if (registered) {
+          const info = await getProviderInfo(address);
+          setProviderInfo(info);
+
+          // Parse metadata JSON
+          if (info?.metadata) {
+            try {
+              const parsedMetadata = JSON.parse(info.metadata);
+              setMetadata(parsedMetadata);
+              
+              // Update config with contract data
+              setConfig((prev) => ({
+                ...prev,
+                name: parsedMetadata.name || prev.name,
+                description: parsedMetadata.description || prev.description,
+                location: {
+                  country: parsedMetadata.country || prev.location.country,
+                  region: regions[Number(info.region)]?.label || prev.location.region,
+                  city: parsedMetadata.location || prev.location.city,
+                },
+                contact: {
+                  email: parsedMetadata.email || prev.contact.email,
+                  website: parsedMetadata.website || prev.contact.website,
+                },
+                operatorAddress: info.operator || prev.operatorAddress,
+                operatorAddressVerified: info.verified || prev.operatorAddressVerified,
+                blockchainResources: {
+                  cpu: Number(info.cpuCores) / 1000, // Convert mCPU to cores
+                  memory: Number(info.memoryMB),
+                  storage: Number(info.diskGB),
+                  bandwidth: 0, // Not available in contract
+                  lastUpdated: new Date(Number(info.updatedAt) * 1000).toISOString(),
+                },
+              }));
+            } catch (e) {
+              console.error("Error parsing metadata:", e);
+            }
+          }
+        } else {
+          setError("Provider is not registered on the blockchain");
+        }
+      } catch (err: any) {
+        console.error("Error fetching provider info:", err);
+        setError(err.message || "Failed to fetch provider information");
+      } finally {
+        setIsLoadingProviderInfo(false);
+      }
+    };
+
+    fetchProviderInfo();
+  }, [address, isConnected]);
+
+  const refreshProviderInfo = async () => {
+    if (!isConnected || !address) return;
+    
+    setIsLoadingProviderInfo(true);
+    setError(null);
+
+    try {
+      const registered = await isProviderRegistered(address);
+      if (registered) {
+        const info = await getProviderInfo(address);
+        setProviderInfo(info);
+
+        // Parse metadata JSON
+        if (info?.metadata) {
+          try {
+            const parsedMetadata = JSON.parse(info.metadata);
+            setMetadata(parsedMetadata);
+          } catch (e) {
+            console.error("Error parsing metadata:", e);
+          }
+        }
+      }
+    } catch (err: any) {
+      console.error("Error refreshing provider info:", err);
+      setError(err.message || "Failed to refresh provider information");
+    } finally {
+      setIsLoadingProviderInfo(false);
+    }
+  };
 
   const validateAddress = (address: string): boolean => {
     // Basic validation: Ethereum-like address (0x followed by 40 hex characters)
@@ -130,33 +259,6 @@ export default function ProviderSettingsPage() {
     return `${normalizedServiceName}-${normalizedDeploymentName}.${config.ingressDomain}-${randomString}`;
   };
 
-  const handleVerifyOperatorAddress = async () => {
-    if (!config.operatorAddress) {
-      alert("Please enter an operator address first");
-
-      return;
-    }
-
-    if (!validateAddress(config.operatorAddress)) {
-      alert(
-        "Invalid address format. Please enter a valid blockchain address (0x...).",
-      );
-
-      return;
-    }
-
-    setIsVerifying(true);
-    // Simulate verification process
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    setConfig((prev) => ({
-      ...prev,
-      operatorAddressVerified: true,
-    }));
-    setHasChanges(true);
-    setIsVerifying(false);
-    alert("Operator address verified successfully!");
-  };
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -214,27 +316,68 @@ export default function ProviderSettingsPage() {
                 </p>
               </div>
             </div>
-            <Button
-              color="primary"
-              isDisabled={!hasChanges}
-              isLoading={isSaving}
-              size="lg"
-              startContent={!isSaving ? <Save size={20} /> : undefined}
-              onPress={handleSave}
-            >
-              {isSaving ? "Saving..." : "Save Changes"}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                color="default"
+                variant="flat"
+                size="lg"
+                startContent={<RefreshCw size={20} />}
+                isLoading={isLoadingProviderInfo}
+                onPress={refreshProviderInfo}
+              >
+                Refresh
+              </Button>
+              <Button
+                color="primary"
+                isDisabled={!hasChanges}
+                isLoading={isSaving}
+                size="lg"
+                startContent={!isSaving ? <Save size={20} /> : undefined}
+                onPress={handleSave}
+              >
+                {isSaving ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
           </div>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <Card className="mb-6 border-danger/20 bg-danger/10">
+            <CardBody className="p-4">
+              <div className="flex items-center gap-2 text-danger">
+                <AlertCircle size={20} />
+                <span>{error}</span>
+              </div>
+            </CardBody>
+          </Card>
+        )}
+
+        {/* Blockchain Provider Info */}
+        <BlockchainProviderInfo
+          providerInfo={providerInfo}
+          isLoading={isLoadingProviderInfo}
+          address={address}
+        />
 
         <Tabs aria-label="Settings tabs" className="w-full">
           <Tab key="general" title="General">
             <GeneralTab
               config={config}
-              handleVerifyOperatorAddress={handleVerifyOperatorAddress}
-              isVerifying={isVerifying}
               updateConfig={updateConfig}
-              validateAddress={validateAddress}
+              providerInfo={providerInfo}
+              metadata={metadata}
+              providerAddress={address}
+              onMetadataUpdate={refreshProviderInfo}
+            />
+          </Tab>
+
+          <Tab key="operator" title="Operator">
+            <OperatorTab
+              providerInfo={providerInfo}
+              providerAddress={address}
+              currentOperator={config.operatorAddress}
+              onOperatorUpdate={refreshProviderInfo}
             />
           </Tab>
 
@@ -253,11 +396,23 @@ export default function ProviderSettingsPage() {
           </Tab>
 
           <Tab key="pricing" title="Pricing">
-            <PricingTab config={config} updateConfig={updateConfig} />
+            <PricingTab
+              config={config}
+              updateConfig={updateConfig}
+              providerInfo={providerInfo}
+              providerAddress={address}
+              onPriceUpdate={refreshProviderInfo}
+            />
           </Tab>
 
           <Tab key="resources" title="Resources">
-            <ResourcesTab config={config} updateConfig={updateConfig} />
+            <ResourcesTab
+              config={config}
+              updateConfig={updateConfig}
+              providerInfo={providerInfo}
+              providerAddress={address}
+              onResourceUpdate={refreshProviderInfo}
+            />
           </Tab>
         </Tabs>
       </div>

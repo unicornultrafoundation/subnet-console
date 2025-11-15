@@ -1,120 +1,294 @@
 "use client";
 
+import { useMemo, useState, useEffect } from "react";
 import { Card, CardBody, CardHeader } from "@heroui/card";
-import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
+import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
-import { Info, KeyRound, CheckCircle, AlertCircle } from "lucide-react";
+import { Info, Lock, Save, Loader2, AlertCircle, CheckCircle } from "lucide-react";
 
 import { ProviderConfig } from "./types";
+import {
+  type ProviderInfo,
+  updateProviderMetadata,
+  type UpdateProviderMetadataParams,
+} from "@/lib/blockchain/provider-contract";
+import { useWallet } from "@/hooks/use-wallet";
+
+interface ProviderMetadata {
+  name?: string;
+  description?: string;
+  website?: string;
+  email?: string;
+  location?: string; // city
+  country?: string;
+  specialties?: string[] | string;
+  [key: string]: string | string[] | undefined;
+}
 
 interface GeneralTabProps {
   config: ProviderConfig;
   updateConfig: (path: string, value: any) => void;
-  validateAddress: (address: string) => boolean;
-  isVerifying: boolean;
-  handleVerifyOperatorAddress: () => void;
+  providerInfo: ProviderInfo | null;
+  metadata: ProviderMetadata;
+  providerAddress: string | null;
+  onMetadataUpdate?: () => void;
 }
+
+const machineTypes = [
+  { value: 0, label: "Kubernetes" },
+  { value: 1, label: "Kubernetes GPU" },
+];
+
+const regions = [
+  { value: 0, label: "North America" },
+  { value: 1, label: "Europe" },
+  { value: 2, label: "Asia Pacific" },
+  { value: 3, label: "South America" },
+  { value: 4, label: "Africa" },
+];
 
 export function GeneralTab({
   config,
   updateConfig,
-  validateAddress,
-  isVerifying,
-  handleVerifyOperatorAddress,
+  providerInfo,
+  metadata,
+  providerAddress,
+  onMetadataUpdate,
 }: GeneralTabProps) {
+  const { address, isConnected } = useWallet();
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [updateSuccess, setUpdateSuccess] = useState(false);
+
+  // Get machine type label from providerInfo
+  const machineTypeLabel = useMemo(() => {
+    if (!providerInfo) return "";
+    const machineTypeIndex = Number(providerInfo.machineType);
+    return machineTypes[machineTypeIndex]?.label || "Unknown";
+  }, [providerInfo]);
+
+  // Get region label from providerInfo
+  const regionLabel = useMemo(() => {
+    if (!providerInfo) return "";
+    const regionIndex = Number(providerInfo.region);
+    return regions[regionIndex]?.label || "";
+  }, [providerInfo]);
+
+  // Get values from metadata (smart contract) or empty string if not available
+  const metadataProviderName = metadata.name || "";
+  const metadataDescription = metadata.description || "";
+  const metadataEmail = metadata.email || "";
+  const metadataWebsite = metadata.website || "";
+  const metadataCity = metadata.location || "";
+  const metadataCountry = metadata.country || "";
+
+  // Local state for editing fields
+  const [editingProviderName, setEditingProviderName] = useState("");
+  const [editingDescription, setEditingDescription] = useState("");
+  const [editingEmail, setEditingEmail] = useState("");
+  const [editingWebsite, setEditingWebsite] = useState("");
+  const [editingCity, setEditingCity] = useState("");
+  const [editingCountry, setEditingCountry] = useState("");
+
+  // Initialize editing fields from metadata
+  useEffect(() => {
+    setEditingProviderName(metadataProviderName);
+    setEditingDescription(metadataDescription);
+    setEditingEmail(metadataEmail);
+    setEditingWebsite(metadataWebsite);
+    setEditingCity(metadataCity);
+    setEditingCountry(metadataCountry);
+  }, [metadataProviderName, metadataDescription, metadataEmail, metadataWebsite, metadataCity, metadataCountry]);
+
+  // Get specialties from metadata (can be array or string, convert to array)
+  const metadataSpecialties = useMemo(() => {
+    if (!metadata.specialties) return [];
+    if (Array.isArray(metadata.specialties)) {
+      return metadata.specialties;
+    }
+    // If it's a string, try to parse it as JSON array first
+    if (typeof metadata.specialties === "string") {
+      try {
+        const parsed = JSON.parse(metadata.specialties);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      } catch (e) {
+        // If parsing fails, it's not JSON, so it might be a comma-separated string
+        // But since metadata is typically JSON, we'll just return empty array
+        // to avoid incorrect parsing
+        return [];
+      }
+    }
+    return [];
+  }, [metadata.specialties]);
+
+  // Local state for editing specialties
+  const [editingSpecialties, setEditingSpecialties] = useState<string[]>([]);
+  const [newSpecialty, setNewSpecialty] = useState("");
+
+  // Initialize editingSpecialties from metadata
+  useEffect(() => {
+    setEditingSpecialties(metadataSpecialties);
+  }, [metadataSpecialties]);
+
+  // Check if specialties have changed
+  const hasSpecialtiesChanges = useMemo(() => {
+    if (editingSpecialties.length !== metadataSpecialties.length) return true;
+    return editingSpecialties.some((s, i) => s !== metadataSpecialties[i]);
+  }, [editingSpecialties, metadataSpecialties]);
+
+  // Add new specialty
+  const handleAddSpecialty = () => {
+    if (newSpecialty.trim() && !editingSpecialties.includes(newSpecialty.trim())) {
+      setEditingSpecialties([...editingSpecialties, newSpecialty.trim()]);
+      setNewSpecialty("");
+      // Update config
+      updateConfig("specialties", [...editingSpecialties, newSpecialty.trim()]);
+    }
+  };
+
+  // Remove specialty
+  const handleRemoveSpecialty = (index: number) => {
+    const newSpecialties = editingSpecialties.filter((_, i) => i !== index);
+    setEditingSpecialties(newSpecialties);
+    // Update config
+    updateConfig("specialties", newSpecialties);
+  };
+
+  // Reset specialties to metadata values
+  const handleResetSpecialties = () => {
+    setEditingSpecialties(metadataSpecialties);
+    setNewSpecialty("");
+    updateConfig("specialties", metadataSpecialties);
+  };
+
+  // Check if any fields have changed
+  const hasChanges = useMemo(() => {
+    return (
+      editingProviderName !== metadataProviderName ||
+      editingDescription !== metadataDescription ||
+      editingEmail !== metadataEmail ||
+      editingWebsite !== metadataWebsite ||
+      editingCity !== metadataCity ||
+      editingCountry !== metadataCountry ||
+      hasSpecialtiesChanges
+    );
+  }, [
+    editingProviderName,
+    editingDescription,
+    editingEmail,
+    editingWebsite,
+    editingCity,
+    editingCountry,
+    hasSpecialtiesChanges,
+    metadataProviderName,
+    metadataDescription,
+    metadataEmail,
+    metadataWebsite,
+    metadataCity,
+    metadataCountry,
+  ]);
+
+  // Handle update provider info
+  const handleUpdateProviderInfo = async () => {
+    if (!providerAddress || !isConnected || !address) {
+      setUpdateError("Provider address or wallet connection is missing");
+      return;
+    }
+
+    setIsUpdating(true);
+    setUpdateError(null);
+    setUpdateSuccess(false);
+
+    try {
+      // Build metadata object from editing fields
+      const metadataObj: any = {};
+      if (editingProviderName.trim()) metadataObj.name = editingProviderName.trim();
+      if (editingDescription.trim()) metadataObj.description = editingDescription.trim();
+      if (editingEmail.trim()) metadataObj.email = editingEmail.trim();
+      if (editingWebsite.trim()) metadataObj.website = editingWebsite.trim();
+      if (editingCity.trim()) metadataObj.location = editingCity.trim();
+      if (editingCountry.trim()) metadataObj.country = editingCountry.trim();
+      if (editingSpecialties.length > 0) metadataObj.specialties = editingSpecialties;
+
+      // Convert to JSON string
+      const metadataJson = JSON.stringify(metadataObj, null, 2);
+
+      console.log("=== Update Provider Metadata ===");
+      console.log("Metadata object:", metadataObj);
+      console.log("Metadata JSON:", metadataJson);
+
+      const params: UpdateProviderMetadataParams = {
+        providerId: providerAddress,
+        metadata: metadataJson,
+      };
+
+      const hash = await updateProviderMetadata(params);
+      console.log("=== Update Provider Metadata - Success ===");
+      console.log("Transaction hash:", hash);
+
+      setUpdateSuccess(true);
+      setUpdateError(null);
+
+          // Refresh provider info after update
+          if (onMetadataUpdate) {
+            setTimeout(() => {
+              onMetadataUpdate();
+            }, 2000); // Wait 2 seconds for blockchain to update
+          }
+    } catch (err: any) {
+      console.error("=== Update Provider Metadata - Error ===");
+      console.error("Error updating provider metadata:", err);
+      setUpdateError(err.message || "Failed to update provider info. Please try again.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   return (
     <Card className="subnet-card mt-4">
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <Info size={20} />
-          <h2 className="text-xl font-bold">Provider Information</h2>
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-2">
+            <Info size={20} />
+            <h2 className="text-xl font-bold">Provider Information</h2>
+          </div>
+          <Button
+            color="primary"
+            size="sm"
+            startContent={isUpdating ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            isLoading={isUpdating}
+            isDisabled={!hasChanges || !isConnected || !address || isUpdating}
+            onPress={handleUpdateProviderInfo}
+          >
+            {isUpdating ? "Updating..." : "Update Provider Info"}
+          </Button>
         </div>
       </CardHeader>
       <CardBody className="space-y-6">
-        {/* Operator Address Section */}
-        <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
-          <div className="flex items-start gap-3 mb-4">
-            <KeyRound className="text-primary flex-shrink-0 mt-0.5" size={20} />
-            <div className="flex-1">
-              <h3 className="font-semibold mb-1">Operator Address</h3>
-              <p className="text-sm text-default-600 mb-4">
-                The operator address is required to operate nodes. This address
-                will be used to authenticate and manage your provider&apos;s
-                nodes on the network.
-              </p>
-
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Operator Address <span className="text-danger">*</span>
-                  </label>
-                  <div className="flex gap-2">
-                    <Input
-                      className="flex-1 font-mono text-sm"
-                      errorMessage={
-                        config.operatorAddress.length > 0 &&
-                        !validateAddress(config.operatorAddress)
-                          ? "Invalid address format"
-                          : undefined
-                      }
-                      isInvalid={
-                        config.operatorAddress.length > 0 &&
-                        !validateAddress(config.operatorAddress)
-                      }
-                      placeholder="0x..."
-                      value={config.operatorAddress}
-                      onChange={(e) => {
-                        updateConfig("operatorAddress", e.target.value);
-                        // Reset verification status if address changes
-                        if (config.operatorAddressVerified) {
-                          updateConfig("operatorAddressVerified", false);
-                        }
-                      }}
-                    />
-                    <Button
-                      color="primary"
-                      isDisabled={
-                        !config.operatorAddress ||
-                        !validateAddress(config.operatorAddress) ||
-                        config.operatorAddressVerified
-                      }
-                      isLoading={isVerifying}
-                      variant="flat"
-                      onPress={handleVerifyOperatorAddress}
-                    >
-                      {config.operatorAddressVerified ? (
-                        <>
-                          <CheckCircle size={16} />
-                          Verified
-                        </>
-                      ) : (
-                        "Verify"
-                      )}
-                    </Button>
-                  </div>
-
-                  {config.operatorAddressVerified && (
-                    <div className="mt-2 flex items-center gap-2 text-sm text-success">
-                      <CheckCircle size={16} />
-                      <span>Operator address verified and active</span>
-                    </div>
-                  )}
-
-                  {config.operatorAddress &&
-                    !config.operatorAddressVerified && (
-                      <div className="mt-2 flex items-center gap-2 text-sm text-warning">
-                        <AlertCircle size={16} />
-                        <span>
-                          Operator address must be verified to operate nodes
-                        </span>
-                      </div>
-                    )}
-                </div>
-              </div>
+        {/* Error Message */}
+        {updateError && (
+          <div className="bg-danger/10 p-4 rounded-lg border border-danger/20">
+            <div className="flex items-start gap-2">
+              <AlertCircle size={20} className="text-danger flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-danger">{updateError}</p>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* Success Message */}
+        {updateSuccess && (
+          <div className="bg-success/10 p-4 rounded-lg border border-success/20">
+            <div className="flex items-start gap-2">
+              <CheckCircle size={20} className="text-success flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-success">
+                Provider info updated successfully! Refreshing provider info...
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Provider Basic Info */}
         <div>
@@ -123,8 +297,12 @@ export function GeneralTab({
           </label>
           <Input
             placeholder="Enter provider name"
-            value={config.name}
-            onChange={(e) => updateConfig("name", e.target.value)}
+            value={editingProviderName}
+            onChange={(e) => {
+              setEditingProviderName(e.target.value);
+              updateConfig("name", e.target.value);
+            }}
+            description="Stored on blockchain (metadata)"
           />
         </div>
 
@@ -133,8 +311,27 @@ export function GeneralTab({
           <textarea
             className="w-full min-h-[100px] px-3 py-2 rounded-lg border border-default-200 bg-default-50 focus:outline-none focus:ring-2 focus:ring-primary"
             placeholder="Enter provider description"
-            value={config.description}
-            onChange={(e) => updateConfig("description", e.target.value)}
+            value={editingDescription}
+            onChange={(e) => {
+              setEditingDescription(e.target.value);
+              updateConfig("description", e.target.value);
+            }}
+          />
+          <p className="text-xs text-default-500 mt-1">
+            Stored on blockchain (metadata)
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-2">
+            Machine Type <span className="text-default-400 text-xs">(read-only)</span>
+          </label>
+          <Input
+            placeholder="Machine Type"
+            value={machineTypeLabel}
+            isReadOnly
+            startContent={<Lock size={16} className="text-default-400" />}
+            description="Machine type is set on blockchain and cannot be changed"
           />
         </div>
 
@@ -143,24 +340,36 @@ export function GeneralTab({
             <label className="block text-sm font-medium mb-2">Country</label>
             <Input
               placeholder="Country"
-              value={config.location.country}
-              onChange={(e) => updateConfig("location.country", e.target.value)}
+              value={editingCountry}
+              onChange={(e) => {
+                setEditingCountry(e.target.value);
+                updateConfig("location.country", e.target.value);
+              }}
+              description="Stored on blockchain (metadata.country)"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">Region</label>
+            <label className="block text-sm font-medium mb-2">
+              Region <span className="text-default-400 text-xs">(read-only)</span>
+            </label>
             <Input
               placeholder="Region"
-              value={config.location.region}
-              onChange={(e) => updateConfig("location.region", e.target.value)}
+              value={regionLabel}
+              isReadOnly
+              startContent={<Lock size={16} className="text-default-400" />}
+              description="Region is set on blockchain and cannot be changed"
             />
           </div>
           <div>
             <label className="block text-sm font-medium mb-2">City</label>
             <Input
               placeholder="City"
-              value={config.location.city}
-              onChange={(e) => updateConfig("location.city", e.target.value)}
+              value={editingCity}
+              onChange={(e) => {
+                setEditingCity(e.target.value);
+                updateConfig("location.city", e.target.value);
+              }}
+              description="Stored on blockchain (metadata.location)"
             />
           </div>
         </div>
@@ -173,8 +382,12 @@ export function GeneralTab({
             <Input
               placeholder="contact@example.com"
               type="email"
-              value={config.contact.email}
-              onChange={(e) => updateConfig("contact.email", e.target.value)}
+              value={editingEmail}
+              onChange={(e) => {
+                setEditingEmail(e.target.value);
+                updateConfig("contact.email", e.target.value);
+              }}
+              description="Stored on blockchain (metadata)"
             />
           </div>
           <div>
@@ -183,45 +396,71 @@ export function GeneralTab({
             </label>
             <Input
               placeholder="https://example.com"
-              value={config.contact.website || ""}
-              onChange={(e) => updateConfig("contact.website", e.target.value)}
+              value={editingWebsite}
+              onChange={(e) => {
+                setEditingWebsite(e.target.value);
+                updateConfig("contact.website", e.target.value);
+              }}
+              description="Stored on blockchain (metadata)"
             />
           </div>
         </div>
 
         <div>
           <label className="block text-sm font-medium mb-2">Specialties</label>
-          <div className="flex flex-wrap gap-2">
-            {config.specialties.map((specialty, index) => (
-              <Chip
-                key={index}
-                color="primary"
-                variant="flat"
-                onClose={() => {
-                  const newSpecialties = config.specialties.filter(
-                    (_, i) => i !== index,
-                  );
-
-                  updateConfig("specialties", newSpecialties);
-                }}
-              >
-                {specialty}
-              </Chip>
-            ))}
+          <div className="flex flex-wrap gap-2 mb-3">
+            {editingSpecialties.length > 0 ? (
+              editingSpecialties.map((specialty, index) => (
+                <Chip
+                  key={index}
+                  color="primary"
+                  variant="flat"
+                  onClose={() => handleRemoveSpecialty(index)}
+                >
+                  {specialty}
+                </Chip>
+              ))
+            ) : (
+              <p className="text-sm text-default-400">No specialties specified</p>
+            )}
           </div>
-          <Input
-            className="mt-2"
-            placeholder="Add specialty and press Enter"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && e.currentTarget.value) {
-                updateConfig("specialties", [
-                  ...config.specialties,
-                  e.currentTarget.value,
-                ]);
-                e.currentTarget.value = "";
-              }
-            }}
-          />
+          <div className="flex gap-2">
+            <Input
+              placeholder="Add specialty and press Enter"
+              value={newSpecialty}
+              onChange={(e) => setNewSpecialty(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddSpecialty();
+                }
+              }}
+              description="Stored on blockchain (metadata.specialties)"
+            />
+            <Button
+              color="primary"
+              variant="flat"
+              onPress={handleAddSpecialty}
+              isDisabled={!newSpecialty.trim() || editingSpecialties.includes(newSpecialty.trim())}
+            >
+              Add
+            </Button>
+          </div>
+          {hasSpecialtiesChanges && (
+            <div className="flex items-center gap-2 mt-2">
+              <Button
+                size="sm"
+                variant="flat"
+                onPress={handleResetSpecialties}
+                isDisabled={isUpdating}
+              >
+                Reset
+              </Button>
+              <p className="text-xs text-default-500">
+                Changes have been made. Click "Update Provider Info" at the top to save.
+              </p>
+            </div>
+          )}
         </div>
       </CardBody>
     </Card>
