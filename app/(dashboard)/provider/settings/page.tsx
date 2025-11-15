@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
 import { Tabs, Tab } from "@heroui/tabs";
@@ -32,7 +32,13 @@ interface ProviderMetadata {
   specialties?: string[] | string;
   ip?: string;
   ingressDomain?: string;
-  [key: string]: string | string[] | undefined;
+  supportedGpuType?: {
+    vendor: string;
+    model: string;
+    memory: number; // GB
+    interface: string;
+  } | null;
+  [key: string]: string | string[] | object | null | undefined;
 }
 
 const regions = [
@@ -150,6 +156,7 @@ export default function ProviderSettingsPage() {
                 operatorAddressVerified: info.verified || prev.operatorAddressVerified,
                 ip: parsedMetadata.ip || prev.ip,
                 ingressDomain: parsedMetadata.ingressDomain || prev.ingressDomain,
+                supportedGpuType: parsedMetadata.supportedGpuType || prev.supportedGpuType,
                 blockchainResources: {
                   cpu: Number(info.cpuCores) / 1000, // Convert mCPU to cores
                   memory: Number(info.memoryMB),
@@ -176,7 +183,7 @@ export default function ProviderSettingsPage() {
     fetchProviderInfo();
   }, [address, isConnected]);
 
-  const refreshProviderInfo = async () => {
+  const refreshProviderInfo = useCallback(async () => {
     if (!isConnected || !address) return;
     
     setIsLoadingProviderInfo(true);
@@ -193,6 +200,34 @@ export default function ProviderSettingsPage() {
           try {
             const parsedMetadata = JSON.parse(info.metadata);
             setMetadata(parsedMetadata);
+            
+            // Update config with contract data
+            setConfig((prev) => ({
+              ...prev,
+              name: parsedMetadata.name || prev.name,
+              description: parsedMetadata.description || prev.description,
+              location: {
+                country: parsedMetadata.country || prev.location.country,
+                region: regions[Number(info.region)]?.label || prev.location.region,
+                city: parsedMetadata.location || prev.location.city,
+              },
+              contact: {
+                email: parsedMetadata.email || prev.contact.email,
+                website: parsedMetadata.website || prev.contact.website,
+              },
+              operatorAddress: info.operator || prev.operatorAddress,
+              operatorAddressVerified: info.verified || prev.operatorAddressVerified,
+              ip: parsedMetadata.ip || prev.ip,
+              ingressDomain: parsedMetadata.ingressDomain || prev.ingressDomain,
+              supportedGpuType: parsedMetadata.supportedGpuType || prev.supportedGpuType,
+              blockchainResources: {
+                cpu: Number(info.cpuCores) / 1000, // Convert mCPU to cores
+                memory: Number(info.memoryMB),
+                storage: Number(info.diskGB),
+                bandwidth: 0, // Not available in contract
+                lastUpdated: new Date(Number(info.updatedAt) * 1000).toISOString(),
+              },
+            }));
           } catch (e) {
             console.error("Error parsing metadata:", e);
           }
@@ -204,7 +239,7 @@ export default function ProviderSettingsPage() {
     } finally {
       setIsLoadingProviderInfo(false);
     }
-  };
+  }, [address, isConnected]);
 
   const validateAddress = (address: string): boolean => {
     // Basic validation: Ethereum-like address (0x followed by 40 hex characters)
@@ -274,7 +309,7 @@ export default function ProviderSettingsPage() {
     alert("Settings saved successfully!");
   };
 
-  const updateConfig = (path: string, value: any) => {
+  const updateConfig = useCallback((path: string, value: any) => {
     setConfig((prev) => {
       const newConfig = { ...prev };
       const keys = path.split(".");
@@ -289,7 +324,7 @@ export default function ProviderSettingsPage() {
 
       return newConfig;
     });
-  };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-background/50">
@@ -400,7 +435,14 @@ export default function ProviderSettingsPage() {
           </Tab>
 
           <Tab key="gpu" title="GPU">
-            <GpuTab config={config} updateConfig={updateConfig} />
+            <GpuTab
+              config={config}
+              updateConfig={updateConfig}
+              providerInfo={providerInfo}
+              metadata={metadata}
+              providerAddress={address || ""}
+              onMetadataUpdate={refreshProviderInfo}
+            />
           </Tab>
 
           <Tab key="pricing" title="Pricing">
