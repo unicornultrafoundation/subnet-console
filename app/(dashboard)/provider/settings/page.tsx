@@ -30,6 +30,8 @@ interface ProviderMetadata {
   location?: string; // city
   country?: string;
   specialties?: string[] | string;
+  ip?: string;
+  ingressDomain?: string;
   [key: string]: string | string[] | undefined;
 }
 
@@ -146,6 +148,8 @@ export default function ProviderSettingsPage() {
                 },
                 operatorAddress: info.operator || prev.operatorAddress,
                 operatorAddressVerified: info.verified || prev.operatorAddressVerified,
+                ip: parsedMetadata.ip || prev.ip,
+                ingressDomain: parsedMetadata.ingressDomain || prev.ingressDomain,
                 blockchainResources: {
                   cpu: Number(info.cpuCores) / 1000, // Convert mCPU to cores
                   memory: Number(info.memoryMB),
@@ -388,6 +392,10 @@ export default function ProviderSettingsPage() {
               updateConfig={updateConfig}
               validateDomain={validateDomain}
               validateIpAddress={validateIpAddress}
+              providerInfo={providerInfo}
+              metadata={metadata}
+              providerAddress={address || ""}
+              onMetadataUpdate={refreshProviderInfo}
             />
           </Tab>
 

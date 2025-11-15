@@ -204,7 +204,8 @@ export function GeneralTab({
 
     try {
       // Build metadata object from editing fields
-      const metadataObj: any = {};
+      // Merge with existing metadata to preserve other fields (e.g., ip, ingressDomain)
+      const metadataObj: any = { ...metadata };
       if (editingProviderName.trim()) metadataObj.name = editingProviderName.trim();
       if (editingDescription.trim()) metadataObj.description = editingDescription.trim();
       if (editingEmail.trim()) metadataObj.email = editingEmail.trim();
