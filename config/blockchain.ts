@@ -38,6 +38,8 @@ export const blockchainConfig = {
       process.env.NEXT_PUBLIC_MARKETPLACE_CONTRACT_ADDRESS || "",
     providerContract:
       process.env.NEXT_PUBLIC_PROVIDER_CONTRACT_ADDRESS || "0x4dC85E2E0C15c2508c1ddc23b193c3bACc687658",
+    stakeToken:
+      process.env.NEXT_PUBLIC_STAKE_TOKEN_ADDRESS || "0x9b1F378683CA345aB210b4cB48Dbf6fa2c072f9F",
   },
 
   // Default network

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
@@ -28,8 +28,11 @@ import {
   registerProvider,
   calculateRequiredStake,
   formatEther,
+  checkTokenAllowance,
+  approveToken,
   type RegisterProviderParams,
 } from "@/lib/blockchain/provider-contract";
+import { blockchainConfig } from "@/config/blockchain";
 
 interface RegistrationStep {
   id: number;
@@ -87,8 +90,13 @@ export default function ProviderRegistration() {
   const [isLoading, setIsLoading] = useState(false);
   const [isCalculatingStake, setIsCalculatingStake] = useState(false);
   const [requiredStake, setRequiredStake] = useState<string>("0");
+  const [requiredStakeWei, setRequiredStakeWei] = useState<bigint>(BigInt(0)); // Store original wei value
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [tokenAllowance, setTokenAllowance] = useState<bigint>(BigInt(0));
+  const [isCheckingAllowance, setIsCheckingAllowance] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [approveTxHash, setApproveTxHash] = useState<string | null>(null);
 
   // Metadata fields
   const [metadataFields, setMetadataFields] = useState<ProviderMetadata>({
@@ -268,8 +276,26 @@ export default function ProviderRegistration() {
 
       const stake = await calculateRequiredStake(params);
       const stakeFormatted = formatEther(stake);
-      // Format to 2 decimal places
-      const stakeDisplay = parseFloat(stakeFormatted).toFixed(2);
+      
+      // Store original wei value for precise calculations
+      setRequiredStakeWei(stake);
+      
+      // Round UP (ceil) to 2 decimal places for display, but add a small buffer (0.01) to ensure enough
+      // This ensures we always approve slightly more than needed
+      const stakeValue = parseFloat(stakeFormatted);
+      // Round up to 2 decimal places: multiply by 100, ceil, divide by 100
+      const stakeRoundedUp = Math.ceil(stakeValue * 100) / 100;
+      // Add 0.01 buffer to ensure we have enough (1% or minimum 0.01)
+      const stakeWithBuffer = Math.max(stakeRoundedUp + 0.01, stakeRoundedUp * 1.01);
+      const stakeDisplay = stakeWithBuffer.toFixed(2);
+      
+      console.log("=== Calculate Stake ===");
+      console.log("Original stake (wei):", stake.toString());
+      console.log("Original stake (ether):", stakeFormatted);
+      console.log("Rounded up (2 decimals):", stakeRoundedUp);
+      console.log("With buffer:", stakeWithBuffer);
+      console.log("Display value:", stakeDisplay);
+      
       setRequiredStake(stakeDisplay);
     } catch (err: any) {
       console.error("Error calculating stake:", err);
@@ -400,6 +426,86 @@ export default function ProviderRegistration() {
     }
   };
 
+  // Check token allowance
+  const checkAllowance = useCallback(async () => {
+    if (!isConnected || !address) {
+      return;
+    }
+
+    setIsCheckingAllowance(true);
+    setError(null);
+
+    try {
+      const providerContractAddress = blockchainConfig.contracts.providerContract;
+      if (!providerContractAddress) {
+        throw new Error("Provider contract address is not configured");
+      }
+
+      const allowance = await checkTokenAllowance(address, providerContractAddress);
+      setTokenAllowance(allowance);
+    } catch (err: any) {
+      console.error("Error checking allowance:", err);
+      setError(err.message || "Failed to check token allowance");
+    } finally {
+      setIsCheckingAllowance(false);
+    }
+  }, [isConnected, address]);
+
+  // Check token allowance when entering step 4 (Review)
+  useEffect(() => {
+    if (currentStep === 4 && isConnected && address && requiredStake !== "0") {
+      checkAllowance();
+    }
+  }, [currentStep, isConnected, address, requiredStake, checkAllowance]);
+
+  // Approve token
+  const handleApprove = async () => {
+    if (!isConnected || !address) {
+      setError("Please connect your wallet first");
+      return;
+    }
+
+    if (requiredStake === "0") {
+      setError("Please calculate required stake first");
+      return;
+    }
+
+    setIsApproving(true);
+    setError(null);
+
+    try {
+      const providerContractAddress = blockchainConfig.contracts.providerContract;
+      if (!providerContractAddress) {
+        throw new Error("Provider contract address is not configured");
+      }
+
+      // Use the original wei value + buffer to ensure we approve enough
+      // Calculate buffer: add 1% or minimum 0.01 token worth of wei
+      const bufferWei = requiredStakeWei / BigInt(100); // 1% buffer
+      const minBufferWei = parseUnits("0.01", 18); // Minimum 0.01 token buffer
+      const totalBufferWei = bufferWei > minBufferWei ? bufferWei : minBufferWei;
+      const stakeAmount = requiredStakeWei + totalBufferWei;
+      
+      console.log("=== Approve Token ===");
+      console.log("Required stake (wei):", requiredStakeWei.toString());
+      console.log("Buffer (wei):", totalBufferWei.toString());
+      console.log("Total to approve (wei):", stakeAmount.toString());
+      console.log("Total to approve (ether):", formatEther(stakeAmount));
+      
+      // Approve the token with the required stake amount + buffer
+      const hash = await approveToken(stakeAmount, providerContractAddress);
+      setApproveTxHash(hash);
+      
+      // Refresh allowance after approval
+      await checkAllowance();
+    } catch (err: any) {
+      console.error("Approval error:", err);
+      setError(err.message || "Failed to approve token. Please try again.");
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!isConnected || !address) {
       setError("Please connect your wallet first");
@@ -410,18 +516,82 @@ export default function ProviderRegistration() {
       return;
     }
 
+    // Check token allowance before registration
+    const providerContractAddress = blockchainConfig.contracts.providerContract;
+    if (!providerContractAddress) {
+      setError("Provider contract address is not configured");
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
     try {
-      const hash = await registerProvider({
+      // Use the original wei value (without buffer) for checking allowance
+      // The contract will use the exact required amount
+      const stakeAmount = requiredStakeWei;
+      const allowance = await checkTokenAllowance(address, providerContractAddress);
+      
+      console.log("=== Register Provider - Allowance Check ===");
+      console.log("Address:", address);
+      console.log("Required Stake (display):", requiredStake);
+      console.log("Required Stake (wei, exact):", stakeAmount.toString());
+      console.log("Required Stake (ether, exact):", formatEther(stakeAmount));
+      console.log("Current Allowance (wei):", allowance.toString());
+      console.log("Current Allowance (ether):", formatEther(allowance));
+      console.log("Allowance sufficient:", allowance >= stakeAmount);
+      
+      if (allowance < stakeAmount) {
+        setError(
+          `Insufficient token allowance. Please approve at least ${requiredStake} tokens first.`,
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      // Prepare registration data
+      const registrationData = {
         ...formData,
         operator: address, // Ensure we use the connected address
+      };
+
+      console.log("=== Register Provider - Registration Data ===");
+      console.log("Full formData:", JSON.stringify(formData, null, 2));
+      console.log("Registration params:", {
+        operator: registrationData.operator,
+        metadata: registrationData.metadata,
+        machineType: registrationData.machineType,
+        region: registrationData.region,
+        cpuCores: registrationData.cpuCores,
+        gpuCores: registrationData.gpuCores,
+        memoryMB: registrationData.memoryMB,
+        diskGB: registrationData.diskGB,
+        cpuPricePerSecond: registrationData.cpuPricePerSecond,
+        gpuPricePerSecond: registrationData.gpuPricePerSecond,
+        memoryPricePerSecond: registrationData.memoryPricePerSecond,
+        diskPricePerSecond: registrationData.diskPricePerSecond,
       });
+      console.log("Price values (strings):", {
+        cpuPricePerSecond: registrationData.cpuPricePerSecond,
+        gpuPricePerSecond: registrationData.gpuPricePerSecond,
+        memoryPricePerSecond: registrationData.memoryPricePerSecond,
+        diskPricePerSecond: registrationData.diskPricePerSecond,
+      });
+
+      // Proceed with registration
+      const hash = await registerProvider(registrationData);
+      console.log("=== Register Provider - Success ===");
+      console.log("Transaction hash:", hash);
       setTxHash(hash);
       setCurrentStep(5); // Success step
     } catch (err: any) {
-      console.error("Registration error:", err);
+      console.error("=== Register Provider - Error ===");
+      console.error("Error object:", err);
+      console.error("Error message:", err.message);
+      console.error("Error code:", err.code);
+      console.error("Error data:", err.data);
+      console.error("Error reason:", err.reason);
+      console.error("Error stack:", err.stack);
       setError(err.message || "Failed to register provider. Please try again.");
     } finally {
       setIsLoading(false);
@@ -920,6 +1090,82 @@ export default function ProviderRegistration() {
                       </CardBody>
                     </Card>
                   )}
+
+                  {/* Token Allowance Status */}
+                  {requiredStake !== "0" && parseFloat(requiredStake) > 0 && requiredStakeWei > BigInt(0) && (
+                    <Card
+                      className={
+                        isCheckingAllowance
+                          ? "bg-default-50 border-default-200"
+                          : tokenAllowance >= requiredStakeWei
+                            ? "bg-success/10 border-success/20"
+                            : "bg-warning/10 border-warning/20"
+                      }
+                    >
+                      <CardBody className="p-4">
+                        <h4 className="font-semibold mb-3 flex items-center gap-2">
+                          <Shield size={18} />
+                          Token Approval Status
+                        </h4>
+                        {isCheckingAllowance ? (
+                          <div className="flex items-center gap-2 text-sm text-dark-on-white-muted">
+                            <Loader2 className="animate-spin" size={16} />
+                            Checking token allowance...
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-dark-on-white-muted">
+                                Current Allowance:
+                              </span>
+                              <span className="text-lg font-bold">
+                                {formatEther(tokenAllowance)} tokens
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-dark-on-white-muted">
+                                Required Amount (exact):
+                              </span>
+                              <span className="text-lg font-bold">{formatEther(requiredStakeWei)} tokens</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-dark-on-white-muted">
+                                Display Value (with buffer):
+                              </span>
+                              <span className="text-sm font-semibold">{requiredStake} tokens</span>
+                            </div>
+                            {tokenAllowance < requiredStakeWei ? (
+                              <div className="mt-4 space-y-2">
+                                <p className="text-sm text-warning">
+                                  You need to approve tokens before registering as a provider.
+                                </p>
+                                {approveTxHash && (
+                                  <p className="text-xs text-success">
+                                    Approval transaction: {approveTxHash.slice(0, 10)}...
+                                    {approveTxHash.slice(-8)}
+                                  </p>
+                                )}
+                                <Button
+                                  color="warning"
+                                  onClick={handleApprove}
+                                  isLoading={isApproving}
+                                  className="w-full"
+                                >
+                                  {isApproving
+                                    ? "Approving Tokens..."
+                                    : `Approve ${requiredStake} Tokens`}
+                                </Button>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-success mt-2">
+                                ✓ Token allowance is sufficient. You can proceed with registration.
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </CardBody>
+                    </Card>
+                  )}
                 </div>
               </div>
             </div>
@@ -1065,7 +1311,7 @@ export default function ProviderRegistration() {
               <Button
                 variant="flat"
                 onClick={handleBack}
-                isDisabled={currentStep === 1 || isLoading}
+                isDisabled={currentStep === 1 || isLoading || isApproving}
                 startContent={<ArrowLeft size={16} />}
               >
                 Back
@@ -1075,7 +1321,7 @@ export default function ProviderRegistration() {
                 <Button
                   color="primary"
                   onClick={handleNext}
-                  isDisabled={isLoading}
+                  isDisabled={isLoading || isApproving}
                   endContent={<ArrowRight size={16} />}
                 >
                   Next
@@ -1085,6 +1331,12 @@ export default function ProviderRegistration() {
                   color="primary"
                   onClick={handleSubmit}
                   isLoading={isLoading}
+                  isDisabled={
+                    isLoading ||
+                    isApproving ||
+                    isCheckingAllowance ||
+                    (requiredStakeWei > BigInt(0) && tokenAllowance < requiredStakeWei)
+                  }
                   endContent={<ArrowRight size={16} />}
                 >
                   Register Provider

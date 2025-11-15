@@ -1,6 +1,56 @@
 import { Contract, BrowserProvider, formatUnits, parseUnits } from "ethers";
 import { blockchainConfig } from "@/config/blockchain";
 
+// ERC20 Token ABI - Standard ERC20 functions for allowance and approve
+export const ERC20_TOKEN_ABI = [
+  {
+    constant: true,
+    inputs: [
+      {
+        name: "_owner",
+        type: "address",
+      },
+      {
+        name: "_spender",
+        type: "address",
+      },
+    ],
+    name: "allowance",
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+      },
+    ],
+    payable: false,
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    constant: false,
+    inputs: [
+      {
+        name: "_spender",
+        type: "address",
+      },
+      {
+        name: "_value",
+        type: "uint256",
+      },
+    ],
+    name: "approve",
+    outputs: [
+      {
+        name: "",
+        type: "bool",
+      },
+    ],
+    payable: false,
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+] as const;
+
 // Provider Contract ABI - Full ABI from Subnet Provider Contract
 export const PROVIDER_CONTRACT_ABI = [
   {
@@ -1767,10 +1817,74 @@ export async function registerProvider(
       throw new Error("Provider contract address is not configured");
     }
 
+    console.log("=== registerProvider Function - Contract Setup ===");
+    console.log("Contract address:", contractAddress);
+    console.log("Signer address:", await signer.getAddress());
+
     const contract = new Contract(contractAddress, PROVIDER_CONTRACT_ABI, signer);
 
     // Convert prices from decimal 18 format (e.g., "0.000002777") to wei using parseUnits
     // parseUnits handles decimal 18 precision correctly for smart contract
+    const cpuPriceWei = parseUnits(params.cpuPricePerSecond, 18);
+    const gpuPriceWei = parseUnits(params.gpuPricePerSecond, 18);
+    const memoryPriceWei = parseUnits(params.memoryPricePerSecond, 18);
+    const diskPriceWei = parseUnits(params.diskPricePerSecond, 18);
+
+    console.log("=== registerProvider Function - Parameters ===");
+    console.log("Raw params:", {
+      operator: params.operator,
+      metadata: params.metadata,
+      machineType: params.machineType,
+      region: params.region,
+      cpuCores: params.cpuCores,
+      gpuCores: params.gpuCores,
+      memoryMB: params.memoryMB,
+      diskGB: params.diskGB,
+      cpuPricePerSecond: params.cpuPricePerSecond,
+      gpuPricePerSecond: params.gpuPricePerSecond,
+      memoryPricePerSecond: params.memoryPricePerSecond,
+      diskPricePerSecond: params.diskPricePerSecond,
+    });
+    console.log("=== registerProvider Function - Parsed Values ===");
+    console.log("Prices (strings -> wei):", {
+      cpuPricePerSecond: {
+        string: params.cpuPricePerSecond,
+        wei: cpuPriceWei.toString(),
+        ether: formatUnits(cpuPriceWei, 18),
+      },
+      gpuPricePerSecond: {
+        string: params.gpuPricePerSecond,
+        wei: gpuPriceWei.toString(),
+        ether: formatUnits(gpuPriceWei, 18),
+      },
+      memoryPricePerSecond: {
+        string: params.memoryPricePerSecond,
+        wei: memoryPriceWei.toString(),
+        ether: formatUnits(memoryPriceWei, 18),
+      },
+      diskPricePerSecond: {
+        string: params.diskPricePerSecond,
+        wei: diskPriceWei.toString(),
+        ether: formatUnits(diskPriceWei, 18),
+      },
+    });
+    console.log("=== registerProvider Function - Contract Call Parameters ===");
+    console.log("Function: registerProvider");
+    console.log("Arguments:", [
+      params.operator,
+      params.metadata,
+      params.machineType,
+      params.region,
+      params.cpuCores,
+      params.gpuCores,
+      params.memoryMB,
+      params.diskGB,
+      cpuPriceWei.toString(),
+      gpuPriceWei.toString(),
+      memoryPriceWei.toString(),
+      diskPriceWei.toString(),
+    ]);
+
     const tx = await contract.registerProvider(
       params.operator,
       params.metadata,
@@ -1780,34 +1894,74 @@ export async function registerProvider(
       params.gpuCores,
       params.memoryMB,
       params.diskGB,
-      parseUnits(params.cpuPricePerSecond, 18), // Convert to wei (decimal 18)
-      parseUnits(params.gpuPricePerSecond, 18), // Convert to wei (decimal 18)
-      parseUnits(params.memoryPricePerSecond, 18), // Convert to wei (decimal 18)
-      parseUnits(params.diskPricePerSecond, 18), // Convert to wei (decimal 18)
+      cpuPriceWei, // Convert to wei (decimal 18)
+      gpuPriceWei, // Convert to wei (decimal 18)
+      memoryPriceWei, // Convert to wei (decimal 18)
+      diskPriceWei, // Convert to wei (decimal 18)
     );
 
+    console.log("=== registerProvider Function - Transaction Sent ===");
+    console.log("Transaction hash:", tx.hash);
+
     const receipt = await tx.wait();
+    console.log("=== registerProvider Function - Transaction Confirmed ===");
+    console.log("Receipt:", {
+      hash: receipt.hash,
+      blockNumber: receipt.blockNumber,
+      gasUsed: receipt.gasUsed?.toString(),
+      status: receipt.status,
+    });
     
     // Extract provider address from event if available, otherwise return tx hash
     if (receipt.logs) {
+      console.log("=== registerProvider Function - Parsing Logs ===");
+      console.log("Total logs:", receipt.logs.length);
       // Try to find ProviderRegistered event
       const eventInterface = contract.interface;
       for (const log of receipt.logs) {
         try {
           const parsedLog = eventInterface.parseLog(log);
+          console.log("Parsed log:", parsedLog?.name, parsedLog?.args);
           if (parsedLog && parsedLog.name === "ProviderRegistered") {
             // Return the provider address from the event
+            console.log("ProviderRegistered event found:", parsedLog.args);
             return parsedLog.args.provider || receipt.hash;
           }
-        } catch {
+        } catch (e) {
           // Not the event we're looking for
+          console.log("Failed to parse log:", e);
         }
       }
     }
     
     return receipt.hash;
   } catch (error: any) {
+    console.error("=== registerProvider Function - Error ===");
     console.error("Error registering provider:", error);
+    console.error("Error details:", {
+      message: error.message,
+      code: error.code,
+      data: error.data,
+      reason: error.reason,
+      transaction: error.transaction,
+      receipt: error.receipt,
+      stack: error.stack,
+    });
+    
+    // Try to decode error if it's a contract error
+    if (error.data) {
+      try {
+        const contract = new Contract(
+          blockchainConfig.contracts.providerContract || "",
+          PROVIDER_CONTRACT_ABI,
+        );
+        const errorFragment = contract.interface.parseError(error.data);
+        console.error("Decoded error:", errorFragment);
+      } catch (e) {
+        console.error("Could not decode error:", e);
+      }
+    }
+    
     throw new Error(error.message || "Failed to register provider");
   }
 }
@@ -1824,4 +1978,84 @@ export function formatEther(value: bigint | string): string {
  */
 export function parseEther(value: string): bigint {
   return parseUnits(value, 18);
+}
+
+/**
+ * Get ERC20 token contract instance
+ */
+function getTokenContract(signer: any): Contract {
+  const tokenAddress = blockchainConfig.contracts.stakeToken;
+  if (!tokenAddress) {
+    throw new Error("Stake token address is not configured");
+  }
+  return new Contract(tokenAddress, ERC20_TOKEN_ABI, signer);
+}
+
+/**
+ * Check token allowance for provider contract
+ */
+export async function checkTokenAllowance(
+  owner: string,
+  spender: string = blockchainConfig.contracts.providerContract || "",
+): Promise<bigint> {
+  try {
+    if (typeof window === "undefined" || !window.ethereum) {
+      throw new Error("MetaMask is not installed");
+    }
+
+    const provider = new BrowserProvider(window.ethereum);
+    const tokenAddress = blockchainConfig.contracts.stakeToken;
+
+    if (!tokenAddress) {
+      throw new Error("Stake token address is not configured");
+    }
+
+    if (!spender) {
+      throw new Error("Provider contract address is not configured");
+    }
+
+    const tokenContract = new Contract(tokenAddress, ERC20_TOKEN_ABI, provider);
+    const allowance = await tokenContract.allowance(owner, spender);
+
+    return allowance;
+  } catch (error: any) {
+    console.error("Error checking token allowance:", error);
+    throw new Error(error.message || "Failed to check token allowance");
+  }
+}
+
+/**
+ * Approve token spending for provider contract
+ */
+export async function approveToken(
+  amount: bigint,
+  spender: string = blockchainConfig.contracts.providerContract || "",
+): Promise<string> {
+  try {
+    if (typeof window === "undefined" || !window.ethereum) {
+      throw new Error("MetaMask is not installed");
+    }
+
+    const provider = new BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    const tokenAddress = blockchainConfig.contracts.stakeToken;
+
+    if (!tokenAddress) {
+      throw new Error("Stake token address is not configured");
+    }
+
+    if (!spender) {
+      throw new Error("Provider contract address is not configured");
+    }
+
+    const tokenContract = getTokenContract(signer);
+    const tx = await tokenContract.approve(spender, amount);
+
+    const receipt = await tx.wait();
+
+    return receipt.hash;
+  } catch (error: any) {
+    console.error("Error approving token:", error);
+    throw new Error(error.message || "Failed to approve token");
+  }
 }
